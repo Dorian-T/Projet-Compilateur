@@ -214,45 +214,157 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitBrackets(grammarTCLParser.BracketsContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitBrackets'");
+        Program program = new Program();
+
+        // Visite l'expression contenue entre les crochets
+        Program exprProgram = visit(ctx.expr());
+
+        // Ajoute les instructions générées pour l'expression entre crochets
+        program.addInstructions(exprProgram);
+
+        return program;
     }
+
 
     @Override
     public Program visitCall(grammarTCLParser.CallContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitCall'");
+        Program program = new Program();
+
+        // Récupère le nom de la fonction à appeler depuis le contexte
+        String functionName = ctx.ID().getText();
+
+        // Génère le code pour chaque argument de la fonction
+        for (grammarTCLParser.ExprContext exprContext : ctx.expr()) {
+            Program argProgram = visit(exprContext);
+            program.addInstructions(argProgram);
+        }
+
+        // Génère le code d'appel de la fonction
+        program.addInstruction(new JumpCall(functionName, JumpCall.Op.JSR, functionName));
+
+        return program;
     }
+
 
     @Override
     public Program visitBoolean(grammarTCLParser.BooleanContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitBoolean'");
+        Program program = new Program();
+
+        // Récupère la valeur booléenne depuis le contexte
+        boolean booleanValue = Boolean.parseBoolean(ctx.BOOLEAN().getText());
+
+        // Génère le code pour charger la valeur booléenne dans un registre
+        int destRegister = getNewRegister();
+        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 0, booleanValue ? 1 : 0));
+        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister)); // Pousse la valeur sur la pile
+
+        return program;
     }
+
 
     @Override
     public Program visitAnd(grammarTCLParser.AndContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitAnd'");
+        Program program = new Program();
+
+        // Récupère le code généré pour les deux expressions à comparer
+        Program leftExprProgram = visit(ctx.expr(0));
+        Program rightExprProgram = visit(ctx.expr(1));
+
+        // Génère le code assembleur pour l'opération logique "&&"
+        int destRegister = getNewRegister();
+        program.addInstructions(leftExprProgram);
+        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister)); // Pop la valeur de l'opérande de gauche
+        program.addInstruction(new CondJump("FalseLabel", CondJump.Op.JZ, destRegister, 0, "FalseLabel")); // Sauter à FalseLabel si l'opérande de gauche est faux
+
+        // Si l'opérande de gauche est vrai, évaluer l'opérande de droite
+        program.addInstructions(rightExprProgram);
+        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister)); // Pop la valeur de l'opérande de droite
+        program.addInstruction(new CondJump("FalseLabel", CondJump.Op.JZ, destRegister, 0, "FalseLabel")); // Sauter à FalseLabel si l'opérande de droite est faux
+
+        // Si les deux opérandes sont vrais, pousser vrai sur la pile
+        program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
+        
+        // FalseLabel: pousser faux sur la pile
+        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 0, 0));
+        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister)); 
+        
+        // TrueLabel: étiquette de fin
+        program.addCode("TrueLabel: ; TrueLabel, both operands are true");
+
+        return program;
     }
+
 
     @Override
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitVariable'");
+        Program program = new Program();
+
+        // Récupérer le nom de la variable depuis le contexte
+        String variableName = ctx.ID().getText();
+
+        // Générer le code pour charger la valeur de la variable sur la pile
+        int destRegister = getNewRegister();
+        program.addInstruction(new Mem("LOAD", Mem.Op.LD, destRegister, variableName));
+
+        // Pousse la valeur de la variable sur la pile
+        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
+
+        return program;
     }
+
 
     @Override
     public Program visitMultiplication(grammarTCLParser.MultiplicationContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitMultiplication'");
+        Program program = new Program();
+
+        // Récupère le code généré pour les deux expressions à multiplier
+        Program leftExprProgram = visit(ctx.expr(0));
+        Program rightExprProgram = visit(ctx.expr(1));
+
+        // Génère le code assembleur pour l'opération de multiplication
+        int destRegister = getNewRegister();
+        program.addInstructions(leftExprProgram);
+        program.addInstructions(rightExprProgram);
+        program.addInstruction(new UAL("MUL", UAL.Op.MUL, destRegister, 1, 2)); // Multiplication
+
+        // Pousse le résultat sur la pile
+        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
+
+        return program;
     }
 
     @Override
     public Program visitEquality(grammarTCLParser.EqualityContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitEquality'");
+        Program program = new Program();
+
+        // Récupère le code généré pour les deux expressions à comparer
+        Program leftExprProgram = visit(ctx.expr(0));
+        Program rightExprProgram = visit(ctx.expr(1));
+
+        // Génère le code assembleur pour l'opération d'égalité
+        int destRegister = getNewRegister();
+        program.addInstructions(leftExprProgram);
+        program.addInstructions(rightExprProgram);
+        
+        // Compare les deux valeurs
+        program.addInstruction(new UAL("SUB", UAL.Op.SUB, destRegister, 1, 2)); // Soustraction
+        program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JZ, destRegister, 0, "TrueLabel")); // Jump to TrueLabel if the result is zero
+
+        // Si les deux valeurs sont différentes, pousser faux sur la pile
+        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 0, 0)); // Load 0 to indicate False
+        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister)); // Push the result to the stack
+        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel")); // Jump to EndLabel
+
+        // TrueLabel: si les deux valeurs sont égales, pousser vrai sur la pile
+        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 1, 1)); // Load 1 to indicate True
+        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister)); // Push the result to the stack
+
+        // EndLabel: étiquette de fin
+        program.addInstruction(new Label("EndLabel: ; End of equality"));
+
+        return program;
     }
+
 
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
