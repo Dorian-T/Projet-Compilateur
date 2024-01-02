@@ -1,6 +1,6 @@
 package Asm;
 public class CondJump extends Instruction {
-    public static enum Op { JINF, JEQU, JSUP, JNEQ, JIEQ, JSEQ };
+    public static enum Op { JINF, JEQU, JSUP, JNEQ, JIEQ, JSEQ, JZ };
     private int sr1;
     private int sr2;
     private String address;
