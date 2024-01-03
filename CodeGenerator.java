@@ -19,6 +19,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     private Map<UnknownType,Type> types;
     private int registerCounter;
     private Map<String, Integer> variableTable;
+    private int labelCounter;
+    private int conditionRegister;
 
     /**
      * Constructeur
@@ -28,6 +30,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         this.types = types;
         this.registerCounter = 0;
         this.variableTable = new java.util.HashMap<String, Integer>();
+        this.labelCounter = 0;
+        this.conditionRegister = 0;
     }
 
     /**
@@ -53,6 +57,10 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return variableTable.size() + 1;
     }
 
+    public String generateNewLabel() {
+        return "LABEL_" + labelCounter++;
+    }
+    
     @Override
     public Program visitNegation(grammarTCLParser.NegationContext ctx) {
         Program program = new Program();
@@ -276,9 +284,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-    
-
-
     @Override
     public Program visitBoolean(grammarTCLParser.BooleanContext ctx) {
         Program program = new Program();
@@ -326,8 +331,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-
-
     @Override
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
         Program program = new Program();
@@ -345,8 +348,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         return program;
     }
-
-
 
     @Override
     public Program visitMultiplication(grammarTCLParser.MultiplicationContext ctx) {
@@ -431,7 +432,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-
     @Override
     public Program visitAddition(grammarTCLParser.AdditionContext ctx) {
         Program program = new Program();
@@ -453,7 +453,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         return program;
     }
-
 
     @Override
     public Program visitBase_type(grammarTCLParser.Base_typeContext ctx) {
@@ -485,7 +484,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-
     @Override
     public Program visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
         Program program = new Program();
@@ -501,9 +499,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
         return program;
     }
-    
-    
-
+     
     @Override
     public Program visitPrint(grammarTCLParser.PrintContext ctx) {
         Program program = new Program();
@@ -518,132 +514,134 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-    
-
-
     @Override
     public Program visitAssignment(grammarTCLParser.AssignmentContext ctx) {
         Program program = new Program();
 
-        String variableName = ctx.ID().getText(); // Récupère le nom de la variable depuis le contexte
+        //String variableName = ctx.VAR().getText(); // Récupère le nom de la variable depuis le contexte
         // Visite l'expression à droite de l'opérateur d'assignation
-        Program expressionProgram = visit(ctx.expr());
+        Program expressionProgram = visit(ctx.expr(0)); // Utilise expr(0) pour obtenir la première expression
 
         // Génère le code pour l'assignation
-        program.addInstructions(expressionProgram.getInstructions()); // Ajoute les instructions de l'expression
+        for (Instruction instruction : expressionProgram.getInstructions()) {
+            program.addInstruction(instruction); // Ajoute chaque instruction de l'expression
+        }
         program.addInstruction(new Mem("", Mem.Op.ST, getNewRegister(), 0)); // Assignation à la variable
 
         return program;
     }
-
 
     @Override
     public Program visitBlock(grammarTCLParser.BlockContext ctx) {
         Program program = new Program();
 
         // Visite chaque instruction dans le bloc
-        for (grammarTCLParser.InstructionContext instructionContext : ctx.instruction()) {
-            Program instructionProgram = visit(instructionContext);
-            program.addInstructions(instructionProgram.getInstructions());
+        for (grammarTCLParser.InstrContext instrContext : ctx.instr()) {
+            Program instructionProgram = visit(instrContext);
+            program.addInstructions(instructionProgram);
         }
 
         return program;
     }
-
 
     @Override
     public Program visitIf(grammarTCLParser.IfContext ctx) {
         Program program = new Program();
 
         // Génère le code pour l'expression conditionnelle
-        Program conditionProgram = visit(ctx.expression());
-        program.addInstructions(conditionProgram.getInstructions());
+        Program conditionProgram = visit(ctx.expr());
+        program.addInstructions(conditionProgram);
 
         // Crée une instruction de saut conditionnel
         String trueLabel = generateNewLabel();
         program.addInstruction(new CondJump(trueLabel, CondJump.Op.JNEQ, conditionRegister, 0, ""));
 
         // Génère le code pour le bloc if
-        Program trueBlockProgram = visit(ctx.block(0));
-        program.addInstructions(trueBlockProgram.getInstructions());
+        Program trueBlockProgram = visit(ctx.instr(0));
+        program.addInstructions(trueBlockProgram);
 
         // Ajoute une étiquette pour le saut conditionnel
         program.addInstruction(new Label(trueLabel));
 
         // Si un bloc else existe, génère le code pour le bloc else
-        if (ctx.block().size() > 1) {
-            Program falseBlockProgram = visit(ctx.block(1));
-            program.addInstructions(falseBlockProgram.getInstructions());
+        if (ctx.instr().size() > 1) {
+            Program falseBlockProgram = visit(ctx.instr(1)); 
+            program.addInstructions(falseBlockProgram);
         }
 
         return program;
     }
 
-
     @Override
     public Program visitWhile(grammarTCLParser.WhileContext ctx) {
         Program program = new Program();
-
+    
         // Étiquettes pour le saut conditionnel et la fin de la boucle
         String conditionLabel = generateNewLabel();
         String endLabel = generateNewLabel();
-
+    
         // Ajoute une étiquette pour la condition initiale
         program.addInstruction(new Label(conditionLabel));
-
+    
         // Génère le code pour l'expression conditionnelle
-        Program conditionProgram = visit(ctx.expression());
-        program.addInstructions(conditionProgram.getInstructions());
-
+        Program conditionProgram = visit(ctx.expr());
+        for (Instruction instruction : conditionProgram.getInstructions()) {
+            program.addInstruction(instruction);
+        }
+    
         // Crée une instruction de saut conditionnel
         program.addInstruction(new CondJump(endLabel, CondJump.Op.JNEQ, conditionRegister, 0, ""));
-
+    
         // Génère le code pour le bloc de la boucle
-        Program loopBlockProgram = visit(ctx.block());
-        program.addInstructions(loopBlockProgram.getInstructions());
-
+        Program loopBlockProgram = visit(ctx.instr());
+        for (Instruction instruction : loopBlockProgram.getInstructions()) {
+            program.addInstruction(instruction);
+        }
+    
         // Ajoute une étiquette pour le saut conditionnel de retour
         program.addInstruction(new JumpCall(conditionLabel, JumpCall.Op.JMP, ""));
-
+    
         // Ajoute une étiquette pour la fin de la boucle
         program.addInstruction(new Label(endLabel));
-
+    
         return program;
     }
-
-
+    
     @Override
     public Program visitFor(grammarTCLParser.ForContext ctx) {
         Program program = new Program();
 
         // Générer le code pour l'initialisation
-        Program initProgram = visit(ctx.initialization);
+        Program initProgram = visit(ctx.instr(0)); 
         program.addInstructions(initProgram);
 
+        // Étiquette de condition de boucle
+        String loopConditionLabel = generateNewLabel();
+        program.addInstruction(new Label(loopConditionLabel));
+
         // Générer le code pour la condition de la boucle
-        Program conditionProgram = visit(ctx.condition);
+        Program conditionProgram = visit(ctx.expr());
         program.addInstructions(conditionProgram);
 
         // Supposons qu'il y ait une instruction de saut basée sur la condition
         program.addInstruction(new CondJump("JMP", CondJump.Op.JZ, getNewRegister(), 0, "EXIT_LOOP"));
 
         // Générer le code pour le corps de la boucle
-        Program bodyProgram = visit(ctx.body);
+        Program bodyProgram = visit(ctx.instr(1)); 
         program.addInstructions(bodyProgram);
 
         // Générer le code pour l'incrémentation
-        Program incrementProgram = visit(ctx.increment);
+        Program incrementProgram = visit(ctx.instr(2));
         program.addInstructions(incrementProgram);
 
         // Sauter de nouveau à la condition de la boucle
-        program.addInstruction(new JumpCall("JMP", "LOOP_CONDITION"));
+        program.addInstruction(new JumpCall("JMP", JumpCall.Op.JMP, loopConditionLabel));
 
         // Étiquette de sortie
         program.addInstruction(new Label("EXIT_LOOP"));
 
         return program;
     }
-
 
     @Override
     public Program visitReturn(grammarTCLParser.ReturnContext ctx) {
@@ -661,64 +659,51 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
-
     @Override
     public Program visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
-        // La méthode visitCore_fct est appelée lors de la visite d'une fonction de base (core function).
-        // Vous devrez générer le code approprié pour chaque fonction de base supportée.
-
-        // Remplacez les instructions suivantes par la logique réelle pour générer le code de chaque fonction de base.
-
         Program program = new Program();
 
-        // Exemple: Si la fonction de base est "print", générez le code d'impression.
-        if (ctx.core_print() != null) {
-            // Visitez le contexte de l'instruction d'impression et ajoutez les instructions générées au programme.
-            Program printProgram = visit(ctx.core_print());
-            program.addInstructions(printProgram);
+        // Générer le code pour chaque instruction dans la fonction de base
+        for (grammarTCLParser.InstrContext instrContext : ctx.instr()) {
+            Program instrProgram = visit(instrContext);
+            program.addInstructions(instrProgram);
         }
-        // Ajoutez des clauses 'else if' pour chaque fonction de base supportée.
 
-        // Si aucune des conditions ci-dessus n'est remplie, lancez une exception indiquant que la méthode n'est pas implémentée.
-        throw new UnsupportedOperationException("Unimplemented method 'visitCore_fct'");
+        return program;
     }
-
 
     @Override
     public Program visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
-        // La méthode visitDecl_fct est appelée lors de la visite d'une déclaration de fonction.
-
-        // Remplacez les instructions suivantes par la logique réelle pour générer le code de la déclaration de fonction.
-
         Program program = new Program();
-
-        // Exemple: Générez le code pour la déclaration de la fonction, y compris son nom et ses paramètres.
-        String functionName = ctx.ID().getText(); // Remplacez ID() par le nom du contexte approprié pour le nom de la fonction.
-        // Vous devrez également récupérer les informations sur les paramètres de la fonction si elle en a.
-
-        // Exemple de génération du code pour la déclaration de la fonction.
-        program.addInstruction(new Label(functionName)); // Utilisez la classe appropriée pour les étiquettes.
-
+    
+        // Générer le code pour la déclaration de la fonction
+        String functionName = ctx.VAR(0).getText(); // Récupérer le nom de la fonction à partir de VAR(0)
+        program.addInstruction(new Label(functionName));
+    
+        // Générer le code pour les paramètres de la fonction, si nécessaire
+        // ...
+    
+        // Générer le code pour le corps de la fonction
+        Program coreFunctionProgram = visit(ctx.core_fct());
+        program.addInstructions(coreFunctionProgram);
+    
         return program;
-    }
-
+    }    
 
     @Override
     public Program visitMain(grammarTCLParser.MainContext ctx) {
-        // La méthode visitMain est appelée lors de la visite de la règle 'main' de votre grammaire.
-
-        // Remplacez les instructions suivantes par la logique réelle pour générer le code de la fonction main.
-
         Program program = new Program();
 
-        // Exemple: Générez le code pour la fonction main, y compris son label et son corps.
-        program.addInstruction(new Label("main")); // Utilisez la classe appropriée pour les étiquettes.
+        // Générer le code pour chaque déclaration de fonction
+        for (grammarTCLParser.Decl_fctContext declContext : ctx.decl_fct()) {
+            Program declProgram = visitDecl_fct(declContext);
+            program.addInstructions(declProgram);
+        }
 
-        // Ajoutez ici le code généré pour le corps de la fonction main en utilisant les méthodes visit appropriées pour ses instructions.
+        // Générer le code pour le corps de la fonction principale
+        Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
+        program.addInstructions(coreFunctionProgram);
 
         return program;
     }
-
-
-        
 }
