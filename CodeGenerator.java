@@ -171,8 +171,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         return program;
     }
-
-
+ 
     @Override
     public Program visitOpposite(grammarTCLParser.OppositeContext ctx) {
         Program program = new Program();
@@ -238,7 +237,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
-    
     @Override
     public Program visitBrackets(grammarTCLParser.BracketsContext ctx) {
         Program program = new Program();
@@ -251,7 +249,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         return program;
     }
-
 
     @Override
     public Program visitCall(grammarTCLParser.CallContext ctx) {
@@ -470,20 +467,20 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
         Program program = new Program();
-    
+
         // Récupère le nom du type de base depuis le sous-contexte de type
-        String baseTypeName = ctx.type().BASE_TYPE().ID().getText();
-    
+        String baseTypeName = ctx.type().BASE_TYPE().getText();
+
         // Récupère la taille du tableau depuis le sous-contexte INT
         int arraySize = Integer.parseInt(ctx.INT().getText());
-    
+
         // Génère le code pour la déclaration du tableau
         program.addInstruction(new Label(baseTypeName)); // Crée une étiquette pour le type de base
         program.addInstruction(new Mem("ALLOC", Mem.Op.LD, getNewRegister(), arraySize)); // Alloue de la mémoire pour le tableau
-    
+
         return program;
     }
-    
+
     @Override
     public Program visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
         Program program = new Program();

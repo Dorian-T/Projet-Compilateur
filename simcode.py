@@ -320,10 +320,3 @@ while PROG[CO][0] != "STOP":
         fin.close()
         fout.close()
         sys.exit(0)
-
-
-
-
-
-
-    
