@@ -5,18 +5,24 @@ import java.util.HashMap;
 public class UnorientedGraph<T> extends Graph<T> {
     private HashMap<T,Integer> colors = new HashMap<T,Integer>(); 
     
+    public UnorientedGraph() {
+    	super();
+    	this.colors = new HashMap<T,Integer>();
+    }
+
     /** 
      * Ajout d'une arête
      * @param u sommet 
      * @param v sommet
      */
     public void addEdge(T u, T v) {
-        this.addVertex(u);
-        this.addVertex(v);
-        this.adjList.get(u).add(v);
-        this.adjList.get(v).add(u);
+        if (!this.hasEdge(u, v)) {
+            this.addVertex(u);
+            this.addVertex(v);
+            this.adjList.get(u).add(v);
+            this.adjList.get(v).add(u);
+        }
     }
-
     /**
      * Getter des voisins d'un sommet
      * @param u sommet
