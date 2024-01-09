@@ -84,8 +84,8 @@ def readFile(ff):
 def readInt(ff):
     res = 0
     a = readFile(ff)
-    while (a != 255) :
-        res = 10*res + a
+    while (48 <= a and a <= 57) :
+        res = 10*res + a-48
         a = readFile(ff)
     return res
 
@@ -320,3 +320,10 @@ while PROG[CO][0] != "STOP":
         fin.close()
         fout.close()
         sys.exit(0)
+
+
+
+
+
+
+    
