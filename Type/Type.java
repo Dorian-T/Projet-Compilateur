@@ -25,7 +25,7 @@ public abstract class Type {
      * @param t type 
      * @return boolean 
      */
-    public abstract boolean equals(Type t);
+    public abstract boolean equals(Object t);
 
     /** 
      * Substitution

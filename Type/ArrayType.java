@@ -27,7 +27,7 @@ public class ArrayType extends Type{
     }
 
     @Override
-    public boolean equals(Type t) {
+    public boolean equals(Object t) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'equals'");
     }
@@ -44,5 +44,14 @@ public class ArrayType extends Type{
         throw new UnsupportedOperationException("Unimplemented method 'contains'");
     }
 
-    
+    /**
+     * Returns a string representation of the ArrayType.
+     *
+     * @return a string representation of the ArrayType
+     */
+    @Override
+    public String toString() {
+        // TODO
+        return "";
+    }
 }

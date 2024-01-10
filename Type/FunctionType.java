@@ -48,7 +48,7 @@ public class FunctionType extends Type {
     }
 
     @Override
-    public boolean equals(Type t) {
+    public boolean equals(Object t) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'equals'");
     }
@@ -65,4 +65,14 @@ public class FunctionType extends Type {
         throw new UnsupportedOperationException("Unimplemented method 'contains'");
     }
 
+    /**
+     * Returns a string representation of the FunctionType.
+     *
+     * @return a string representation of the FunctionType
+     */
+    @Override
+    public String toString() {
+        // TODO
+        return "";
+    }
 }

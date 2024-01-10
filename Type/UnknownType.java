@@ -77,7 +77,7 @@ public class UnknownType extends Type {
     }
 
     @Override
-    public boolean equals(Type t) {
+    public boolean equals(Object t) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'equals'");
     }
@@ -94,6 +94,14 @@ public class UnknownType extends Type {
         throw new UnsupportedOperationException("Unimplemented method 'contains'");
     }
 
-    
-
+    /**
+     * Returns a string representation of the UnknownType.
+     *
+     * @return a string representation of the UnknownType
+     */
+    @Override
+    public String toString() {
+        // TODO
+        return "";
+    }
 }
