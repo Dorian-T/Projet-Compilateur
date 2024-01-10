@@ -28,8 +28,7 @@ public  class PrimitiveType extends Type {
 
     @Override
     public boolean equals(Object t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'equals'");
+        return (t instanceof PrimitiveType) && (((PrimitiveType)t).getType() == this.type);
     }
 
     @Override
@@ -51,7 +50,9 @@ public  class PrimitiveType extends Type {
      */
     @Override
     public String toString() {
-        // TODO
-        return "";
+        if (type == Type.Base.INT)
+            return "int";
+        else
+            return "bool";
     }
 }
