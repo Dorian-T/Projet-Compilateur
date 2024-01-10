@@ -5,6 +5,14 @@ import java.util.Map;
 public abstract class Type {
     public enum Base { INT, BOOL };
 
+    /**
+     * Fonction de hashage pour les HashMap
+     * @return hash du type
+     */
+    @Override public int hashCode() {
+        return this.toString().hashCode();
+    }
+
     /** 
      * Unification
      * @param t type à unifier
@@ -45,4 +53,10 @@ public abstract class Type {
      * @return boolean 
      */
     public abstract boolean contains(UnknownType v);
+
+    /**
+     * Convertit le type en String. Deux types égaux doivent avoir la même String.
+     * @return String
+     */
+    @Override public abstract String toString();
 }
