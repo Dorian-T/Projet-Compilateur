@@ -12,15 +12,16 @@ public class Main {
             grammarTCLLexer lexer = new grammarTCLLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
 
-            System.out.println(lexer.getAllTokens());
+            //System.out.println(lexer.getAllTokens());
 
             grammarTCLParser parser = new grammarTCLParser(tokens);
             grammarTCLParser.MainContext tree = parser.main();
             
 
-            //System.out.println(tree);
-            //Implémenter une classe NPIStack qui hérite de la classe AbstractParseTree
-            //Visitor<Void> et qui implémente l’interface NPIVisitor<Void>
+            TyperVisitor typer = new TyperVisitor();
+            typer.visit(tree);
+            typer.getTypes();
+            //Map<UnknownType, Type> types
             
         }catch (Exception e){
             System.out.println(e.getMessage());

@@ -3,7 +3,7 @@ import java.util.Map;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
-import Type.Type;
+import Type.*;
 import Type.UnknownType;
 
 public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements grammarTCLVisitor<Type> {
@@ -166,8 +166,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitCore_fct'");
+        System.out.println("visit Core_fct");
+        return this.visitChildren(ctx);
     }
 
     @Override
@@ -178,8 +178,12 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitMain(grammarTCLParser.MainContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitMain'");
+        System.out.println("visit main");
+        types = new HashMap<UnknownType,Type>();
+
+        this.types.put(new UnknownType(ctx), new PrimitiveType(Type.Base.INT));
+        
+        return this.visitChildren(ctx);
     }
 
     
