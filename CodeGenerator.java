@@ -222,7 +222,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program program = new Program();
 
         // Récupérer le type du tableau et l'indice
-        Type tabType = types.get(ctx.ID().getText());
+        //Type tabType = types.get(ctx.ID().getText());
 
         // Générer le code assembleur pour chaque expression dans la liste
         for (grammarTCLParser.ExprContext exprCtx : ctx.expr()) {
@@ -469,14 +469,14 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program program = new Program();
 
         // Récupère le nom du type de base depuis le sous-contexte de type
-        String baseTypeName = ctx.type().BASE_TYPE().getText();
+        //String baseTypeName = ctx.type().BASE_TYPE().getText();
 
         // Récupère la taille du tableau depuis le sous-contexte INT
-        int arraySize = Integer.parseInt(ctx.INT().getText());
+        //int arraySize = Integer.parseInt(ctx.INT().getText());
 
         // Génère le code pour la déclaration du tableau
-        program.addInstruction(new Label(baseTypeName)); // Crée une étiquette pour le type de base
-        program.addInstruction(new Mem("ALLOC", Mem.Op.LD, getNewRegister(), arraySize)); // Alloue de la mémoire pour le tableau
+        //program.addInstruction(new Label(baseTypeName)); // Crée une étiquette pour le type de base
+        //program.addInstruction(new Mem("ALLOC", Mem.Op.LD, getNewRegister(), arraySize)); // Alloue de la mémoire pour le tableau
 
         return program;
     }

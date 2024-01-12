@@ -49,8 +49,9 @@ public class FunctionType extends Type {
 
     @Override
     public boolean equals(Object t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'equals'");
+        return (t instanceof FunctionType)
+            && (((FunctionType)t).getReturnType().equals(this.returnType))
+            && (((FunctionType)t).getNbArgs() == this.getNbArgs());
     }
 
     @Override
@@ -72,7 +73,6 @@ public class FunctionType extends Type {
      */
     @Override
     public String toString() {
-        // TODO
-        return "";
+        return "function(" + argsTypes.toString() + ") -> " + returnType.toString();
     }
 }
