@@ -1,14 +1,15 @@
 package Type;
 import java.util.Map;
 
-public  class PrimitiveType extends Type {
+public class Primitive_Type extends Type {
+    
     private Type.Base type; 
     
     /**
      * Constructeur
      * @param type type de base
      */
-    public PrimitiveType(Type.Base type) {
+    public Primitive_Type(Type.Base type) {
         this.type = type;
     }
 
@@ -28,7 +29,7 @@ public  class PrimitiveType extends Type {
 
     @Override
     public boolean equals(Object t) {
-        return (t instanceof PrimitiveType) && (((PrimitiveType)t).getType() == this.type);
+        return (t instanceof Primitive_Type) && (((Primitive_Type)t).getType() == this.type);
     }
 
     @Override
@@ -44,9 +45,9 @@ public  class PrimitiveType extends Type {
     }
 
     /**
-     * Returns a string representation of the PrimitiveType.
+     * Returns a string representation of the Primitive_Type.
      *
-     * @return a string representation of the PrimitiveType
+     * @return a string representation of the Primitive_Type
      */
     @Override
     public String toString() {

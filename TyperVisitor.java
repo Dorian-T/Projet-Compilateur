@@ -3,8 +3,10 @@ import java.util.Map;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
-import Type.*;
+import Type.Type;
 import Type.UnknownType;
+import Type.Primitive_Type;
+import Type.ArrayType;
 
 public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements grammarTCLVisitor<Type> {
 
@@ -118,8 +120,31 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitDeclaration'");
+
+        System.out.println("visit declaration : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
+        Type type = null;
+        String str_type = ctx.getChild(0).getText();
+
+        switch (str_type.charAt(0)) {
+        case 'i':
+            type = new Primitive_Type(Type.Base.INT);
+            break;
+        case 'b':
+            type = new Primitive_Type(Type.Base.BOOL);
+            break;
+        case 'a':
+            type = new Primitive_Type(Type.Base.UNKNOWN);
+            break;
+        default:
+            System.out.println("Erreur : type non reconnu ( //TODO : tableau )");
+            break;
+        }
+        for (int i = 0; i < ((str_type.length() - 3) / 2) ; i++) {
+            System.out.println("tableau");
+            type = new ArrayType(type);
+        }
+        this.types.put(new UnknownType(ctx.getChild(1)), type );
+        return null;
     }
 
     @Override
@@ -166,7 +191,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
-        System.out.println("visit Core_fct");
+        System.out.println("visit Core_fct : rein a faire ?");
         return this.visitChildren(ctx);
     }
 
@@ -180,8 +205,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     public Type visitMain(grammarTCLParser.MainContext ctx) {
         System.out.println("visit main");
         types = new HashMap<UnknownType,Type>();
-
-        this.types.put(new UnknownType(ctx), new PrimitiveType(Type.Base.INT));
+        this.types.put(new UnknownType(ctx), new Primitive_Type(Type.Base.INT));
         
         return this.visitChildren(ctx);
     }

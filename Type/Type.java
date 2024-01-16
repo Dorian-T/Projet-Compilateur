@@ -3,7 +3,7 @@ import java.util.Map;
 
 
 public abstract class Type {
-    public enum Base { INT, BOOL };
+    public enum Base { INT, BOOL, UNKNOWN };
 
     /**
      * Fonction de hashage pour les HashMap
