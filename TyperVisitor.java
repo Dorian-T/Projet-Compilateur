@@ -147,6 +147,13 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return null;
     }
 
+    /**
+     * Counts the number of occurrences of a specified character in a given string.
+     *
+     * @param str The string to search for occurrences.
+     * @param c The character to count occurrences of.
+     * @return The number of occurrences of the specified character in the string.
+     */
     private int countOccurrences(String str, char c) {
         int originalLength = str.length();
         int lengthWithoutChar = str.replace(String.valueOf(c), "").length();
