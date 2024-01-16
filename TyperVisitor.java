@@ -1,5 +1,6 @@
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
@@ -7,6 +8,7 @@ import Type.Type;
 import Type.UnknownType;
 import Type.Primitive_Type;
 import Type.ArrayType;
+import Type.FunctionType;
 
 public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements grammarTCLVisitor<Type> {
 
@@ -108,42 +110,31 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitBase_type(grammarTCLParser.Base_typeContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitBase_type'");
+
+        switch (ctx.getChild(0).getText()) {
+            case "int":
+                return new Primitive_Type(Type.Base.INT);
+            case "bool":
+                return new Primitive_Type(Type.Base.BOOL);
+            case "auto":
+                return new Primitive_Type(Type.Base.UNKNOWN);
+            default:
+                System.out.println("Erreur : type non reconnu ( //TODO : tableau )");
+        }
+        return null;
     }
 
     @Override
     public Type visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitTab_type'");
+        System.out.println(" --- Tableau");
+        return new ArrayType(visit(ctx.getChild(0)));
     }
 
     @Override
     public Type visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
 
         System.out.println("visit declaration : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
-        Type type = null;
-        String str_type = ctx.getChild(0).getText();
-
-        switch (str_type.charAt(0)) {
-        case 'i':
-            type = new Primitive_Type(Type.Base.INT);
-            break;
-        case 'b':
-            type = new Primitive_Type(Type.Base.BOOL);
-            break;
-        case 'a':
-            type = new Primitive_Type(Type.Base.UNKNOWN);
-            break;
-        default:
-            System.out.println("Erreur : type non reconnu ( //TODO : tableau )");
-            break;
-        }
-        for (int i = 0; i < ((str_type.length() - 3) / 2) ; i++) {
-            System.out.println("tableau");
-            type = new ArrayType(type);
-        }
-        this.types.put(new UnknownType(ctx.getChild(1)), type );
+        this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)) );
         return null;
     }
 
@@ -197,8 +188,20 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitDecl_fct'");
+        
+        System.out.println("visit Decl_fct : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
+
+        ArrayList<Type> args = new ArrayList<Type>();
+        for(int i = 3; i < ctx.getChildCount()-1; i+=3){
+
+            System.out.println(" - parametre : " + ctx.getChild(i).getText());
+
+            args.add(visit(ctx.getChild(i)));
+        }
+        
+        System.out.println("fin boucle");
+        this.types.put(new UnknownType(ctx.getChild(1)), new FunctionType(visit(ctx.getChild(0)), args));
+        return null;
     }
 
     @Override
@@ -209,6 +212,4 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         
         return this.visitChildren(ctx);
     }
-
-    
 }
