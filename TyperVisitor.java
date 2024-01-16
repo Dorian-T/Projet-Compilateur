@@ -139,12 +139,18 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
             System.out.println("Erreur : type non reconnu ( //TODO : tableau )");
             break;
         }
-        for (int i = 0; i < ((str_type.length() - 3) / 2) ; i++) {
+        for (int i = 0; i < countOccurrences(str_type, '[') ; i++) {
             System.out.println("tableau");
             type = new ArrayType(type);
         }
         this.types.put(new UnknownType(ctx.getChild(1)), type );
         return null;
+    }
+
+    private int countOccurrences(String str, char c) {
+        int originalLength = str.length();
+        int lengthWithoutChar = str.replace(String.valueOf(c), "").length();
+        return originalLength - lengthWithoutChar;
     }
 
     @Override
