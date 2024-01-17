@@ -101,7 +101,6 @@ public class UnknownType extends Type {
      */
     @Override
     public String toString() {
-        // TODO
-        return "";
+        return "auto";
     }
 }
