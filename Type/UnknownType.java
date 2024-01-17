@@ -78,8 +78,8 @@ public class UnknownType extends Type {
 
     @Override
     public boolean equals(Object t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'equals'");
+        return (t instanceof UnknownType)
+            && (((UnknownType)t).getVarName() == this.varName);
     }
 
     @Override
@@ -101,6 +101,6 @@ public class UnknownType extends Type {
      */
     @Override
     public String toString() {
-        return "auto";
+        return varName + ":" + varIndex + " ";
     }
 }

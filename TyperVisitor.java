@@ -44,8 +44,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitInteger(grammarTCLParser.IntegerContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitInteger'");
+        return new Primitive_Type(Type.Base.INT);
     }
 
     @Override
@@ -68,8 +67,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitBoolean(grammarTCLParser.BooleanContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitBoolean'");
+        return new Primitive_Type(Type.Base.BOOL);
     }
 
     @Override
@@ -80,8 +78,12 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitVariable(grammarTCLParser.VariableContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitVariable'");
+        System.out.println("visit variable : " + ctx.getChild(0).getText());
+        if(this.types.containsKey(new UnknownType(ctx.getChild(0).getText(), 0))){ //on verifie si la variable existe deja dans le this.types
+            return this.types.get(new UnknownType(ctx.getChild(0).getText(), 0));
+        }else{
+            throw new UnsupportedOperationException("Variable non déclarée");
+        }
     }
 
     @Override
@@ -146,8 +148,28 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitAssignment(grammarTCLParser.AssignmentContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitAssignment'");
+        System.out.println("visit assignment : " );
+        //verifie si la variable existe deja dans le this.types
+        if(this.types.containsKey(new UnknownType(ctx.getChild(0).getText(), 28))){ /// TODO : containsKey ne fonctionne pas comme ca
+            
+            //verifie si le type de la variable est le meme que celui de l'expression
+            Type type1 = this.types.get(new UnknownType(ctx.getChild(0).getText(), 28));
+            Type type2 = visit(ctx.getChild(2));
+            System.out.println(" - type1 : " + type1.toString());
+            System.out.println(" - type2 : " + type2.toString());
+            if(type1.equals(type2)){ //on verifie si les types sont les memes
+                System.out.println(" --- type1 == type2");
+                return null;
+            }else{
+                //TODO : essaye de faire un unification
+                throw new UnsupportedOperationException("Type non compatible");
+            }
+        }else{
+
+            System.out.println(this.types.toString());
+            System.out.println(new UnknownType(ctx.getChild(0).getText(), 28).toString());
+            throw new UnsupportedOperationException("Variable non déclarée");
+        }
     }
 
     @Override
@@ -182,8 +204,22 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
-        System.out.println("visit Core_fct : rein a faire ?");
-        return this.visitChildren(ctx);
+
+        // il faut verifier que le type de retour est le meme que celui de l'expression
+        // TODO : il faut donc retourner le type de l'unification des types des return...
+
+        // ArrayList<Type> returnType = null;
+        // for(int i = 0; i < ctx.getChildCount(); i++){
+        //     System.out.println("visit core_fct : " + ctx.getChild(i).getText());
+        //     if(ctx.getChild(i).getText() == "return" ){
+        //         i++;
+        //         System.out.println(" - return");
+        //         returnType.add(visit(ctx.getChild(i)));
+        //     }
+        // }
+        // return returnType;
+        this.visitChildren(ctx);
+        return null;
     }
 
     @Override
@@ -201,6 +237,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         
         System.out.println("fin boucle");
         this.types.put(new UnknownType(ctx.getChild(1)), new FunctionType(visit(ctx.getChild(0)), args));
+        visit(ctx.getChild(ctx.getChildCount()-1)); // on visite ensuite le bloc de la fonction
         return null;
     }
 
