@@ -1,5 +1,7 @@
 import java.util.Map;
 
+import javax.sound.sampled.Control;
+
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 import Asm.Program;
 import Asm.Ret;
@@ -21,7 +23,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     private Map<String, Integer> variableTable;
     private int labelCounter;
     private int conditionRegister;
-
+    private Map<String, Integer> retFunctionTable;
     /**
      * Constructeur
      * @param types types de chaque variable du code source
@@ -32,6 +34,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         this.variableTable = new java.util.HashMap<String, Integer>();
         this.labelCounter = 0;
         this.conditionRegister = 0;
+        this.retFunctionTable = new java.util.HashMap<String, Integer>();
     }
 
     /**
@@ -262,6 +265,10 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         String functionName = ctx.VAR().getText();
         //on ajoute un Call
         program.addInstruction(new JumpCall(JumpCall.Op.CALL, functionName));
+        //on récupère le retour de la fonction
+        int destReg = getNewRegister();
+        //on récupère dans la table des registres de retour des fonctions la valeur de retour
+        program.addInstruction(new UALi(UALi.Op.ADD, destReg, retFunctionTable.get(functionName),0));
 
         return program;
     }
@@ -358,7 +365,14 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Génère le code assembleur pour l'opération d'égalité
         int destRegister = getNewRegister();
         program.addInstruction(new UAL(UAL.Op.SUB, destRegister, sr1, sr2)); // sr1 - sr2
-        //si c'est 0, les 2 sont égales, donc on laisse comme ça
+        Label trueLabel = new Label(generateNewLabel());
+
+        //si rslt = 0, les 2 sont égales, donc on laisse comme ça
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, destRegister, 0, trueLabel.getLabel())); // Sauter à TrueLabel si les deux valeurs sont égales
+        // Si les deux valeurs ne sont pas égales, on passe à 1 
+        program.addInstruction(new UALi(UALi.Op.ADD, destRegister, 0, 1));
+        //Enfin, on inverse le résultat, donc 1 si c'est bon, 0 sinon : op : 1 - destRegister[=0 ou 1]
+        program.addInstruction(new UAL(trueLabel.getLabel(),UAL.Op.SUB, destRegister, 1, destRegister));
         return program;
     }
 
@@ -489,7 +503,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         //String variableName = ctx.VAR().getText(); // Récupère le nom de la variable depuis le contexte
         // Visite l'expression à droite de l'opérateur d'assignation
-        Program expressionProgram = visit(ctx.expr(0)); // Utilise expr(0) pour obtenir la première et seule expression (1 +1 +1 est 1 seule expr)
+        Program expressionProgram = visit(ctx.expr(0)); // Utilise expr(0) pour obtenir l'expression
         // Ajoute les instructions générées pour l'expression à droite de l'opérateur d'assignation
         program.addInstructions(expressionProgram);
         // Ajoute une instruction pour stocker la valeur dans la variable
@@ -519,14 +533,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitIf(grammarTCLParser.IfContext ctx) {
         Program program = new Program();
 
-
         // Génère le code pour l'expression conditionnelle
         Program conditionProgram = visit(ctx.expr());
         program.addInstructions(conditionProgram);
         // Ajoute une étiquette pour le saut conditionnel
         String trueLabel = generateNewLabel();
-        //si la condition est = 0 (donc vraie)
-        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, trueLabel));
+        //si la condition est != 0 donc true
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, registerCounter - 1, 0, trueLabel));
         
         
         //on fait un jump à la fin du if
@@ -676,6 +689,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Générer le code pour le corps de la fonction
         Program coreFunctionProgram = visit(ctx.core_fct());
         program.addInstructions(coreFunctionProgram);
+
+        //on enregistre le retour de la fonction
+        retFunctionTable.put(functionName, registerCounter - 1);
 
         return program;
     }    
