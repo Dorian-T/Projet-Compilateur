@@ -5,6 +5,7 @@ import javax.sound.sampled.Control;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 import Asm.Program;
 import Asm.Ret;
+import Asm.Stop;
 import Asm.UAL;
 import Asm.UALi;
 import Asm.CondJump;
@@ -668,8 +669,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // on gère le return
         if (ctx.getChild(i+1).getText().equals("return")) {
             program.addInstructions(visit(ctx.getChild(i+2)));
-            // Ajouter l'instruction de retour
-            program.addInstruction(new Ret());
+            
         }
 
         return program;
@@ -690,6 +690,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program coreFunctionProgram = visit(ctx.core_fct());
         program.addInstructions(coreFunctionProgram);
 
+        // Ajouter l'instruction RET
+        program.addInstruction(new Ret());
+
         //on enregistre le retour de la fonction
         retFunctionTable.put(functionName, registerCounter - 1);
 
@@ -702,17 +705,16 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitMain");
         program.addInstruction(new UAL(UAL.Op.XOR, 0, 0, 0));
         program.addInstruction(new UALi(UALi.Op.ADD, 1, 0, 1));
-
+        program.addInstruction(new Label("main"));
+        // Générer le code pour le corps de la fonction principale
+        Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
+        program.addInstructions(coreFunctionProgram);
+        program.addInstruction(new Stop());
         // Générer le code pour chaque déclaration de fonction
         for (grammarTCLParser.Decl_fctContext declContext : ctx.decl_fct()) {
             Program declProgram = visitDecl_fct(declContext);
             program.addInstructions(declProgram);
         }
-        program.addInstruction(new Label("main"));
-        // Générer le code pour le corps de la fonction principale
-        Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
-        program.addInstructions(coreFunctionProgram);
-
         return program;
     }
 }
