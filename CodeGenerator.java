@@ -348,29 +348,17 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         // Récupère le code généré pour les deux expressions à comparer
         Program leftExprProgram = visit(ctx.expr(0));
+        program.addInstructions(leftExprProgram);
+        int sr1 = registerCounter - 1;
+        //droite
         Program rightExprProgram = visit(ctx.expr(1));
-
+        program.addInstructions(rightExprProgram);
+        int sr2 = registerCounter - 1;
+        
         // Génère le code assembleur pour l'opération d'égalité
         int destRegister = getNewRegister();
-        program.addInstructions(leftExprProgram);
-        program.addInstructions(rightExprProgram);
-        
-        // Compare les deux valeurs
-        program.addInstruction(new UAL("SUB", UAL.Op.SUB, destRegister, 1, 2)); // Soustraction
-        program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JZ, destRegister, 0, "TrueLabel")); // Jump to TrueLabel if the result is zero
-
-        // Si les deux valeurs sont différentes, pousser faux sur la pile
-        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 0, 0)); // Load 0 to indicate False
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister)); // Push the result to the stack
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel")); // Jump to EndLabel
-
-        // TrueLabel: si les deux valeurs sont égales, pousser vrai sur la pile
-        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 1, 1)); // Load 1 to indicate True
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister)); // Push the result to the stack
-
-        // EndLabel: étiquette de fin
-        program.addInstruction(new Label("EndLabel: ; End of equality"));
-
+        program.addInstruction(new UAL(UAL.Op.SUB, destRegister, sr1, sr2)); // sr1 - sr2
+        //si c'est 0, les 2 sont égales, donc on laisse comme ça
         return program;
     }
 
@@ -466,15 +454,16 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitDeclaration");
         Program program = new Program();
         /* !!!prob : on ne peut avoir qu'une déclaration d'entier (ou de booléen des fois)
-        */     
-
-        // on fait un nouveau registre 
+        */
         int destRegister = getNewRegister();
         // on déclare la variable dans la table des variables
         variableTable.put(ctx.VAR().getText(), destRegister);
+        
+        if (ctx.expr() == null) return program;
+        program.addInstructions(visit(ctx.expr()));
+       
         // on déclare la variable : init à 0 puis on la modifie avec l'expression
-        program.addInstruction(new UAL(UAL.Op.XOR, destRegister, destRegister, destRegister));
-        program.addInstruction(new UALi(UALi.Op.ADD, destRegister, destRegister, Integer.parseInt(ctx.expr().getText())));
+        program.addInstruction(new UALi(UALi.Op.ADD, destRegister, registerCounter - 1, 0));
         return program;
     }
      
@@ -504,8 +493,11 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Ajoute les instructions générées pour l'expression à droite de l'opérateur d'assignation
         program.addInstructions(expressionProgram);
         // Ajoute une instruction pour stocker la valeur dans la variable
+        
+        int sr1 = registerCounter - 1;
         int regvar = getVariableAddress(ctx.VAR().getText());
-        program.addInstruction(new UALi(UALi.Op.ADD, regvar, registerCounter - 1, 0));
+
+        program.addInstruction(new UALi(UALi.Op.ADD, regvar, sr1, 0));
         return program;
     }
 
@@ -525,35 +517,43 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitIf(grammarTCLParser.IfContext ctx) {
-        Program program = new Program("IF");
+        Program program = new Program();
+
 
         // Génère le code pour l'expression conditionnelle
         Program conditionProgram = visit(ctx.expr());
         program.addInstructions(conditionProgram);
-
-        // Crée une instruction de saut conditionnel
-        String trueLabel = generateNewLabel();
-        program.addInstruction(new CondJump(trueLabel, CondJump.Op.JNEQ, conditionRegister, 0, ""));
-
-        // Génère le code pour le bloc if
-        Program trueBlockProgram = visit(ctx.instr(0));
-        program.addInstructions(trueBlockProgram);
-
         // Ajoute une étiquette pour le saut conditionnel
-        program.addInstruction(new Label(trueLabel));
-
+        String trueLabel = generateNewLabel();
+        //si la condition est = 0 (donc vraie)
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, trueLabel));
+        
+        
+        //on fait un jump à la fin du if
+        String endLabel = generateNewLabel();
         // Si un bloc else existe, génère le code pour le bloc else
         if (ctx.instr().size() > 1) {
             Program falseBlockProgram = visit(ctx.instr(1)); 
             program.addInstructions(falseBlockProgram);
+        
+            program.addInstruction(new JumpCall(JumpCall.Op.JMP, endLabel));
         }
+        
+        
+        // on place le true label ; code si la condition est vraie
+        program.addInstruction(new Label(trueLabel));
+        Program trueBlockProgram = visit(ctx.instr(0));
+        program.addInstructions(trueBlockProgram);
+
+
+        program.addInstruction(new Label(endLabel));
 
         return program;
     }
 
     @Override
     public Program visitWhile(grammarTCLParser.WhileContext ctx) {
-        Program program = new Program("While");
+        Program program = new Program();
     
         // Étiquettes pour le saut conditionnel et la fin de la boucle
         String conditionLabel = generateNewLabel();
@@ -588,7 +588,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitFor(grammarTCLParser.ForContext ctx) {
-        Program program = new Program("FOR");
+        Program program = new Program();
 
         // Générer le code pour l'initialisation
         Program initProgram = visit(ctx.instr(0)); 
@@ -625,17 +625,19 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitReturn(grammarTCLParser.ReturnContext ctx) {
         System.out.println("visitReturn");
+
+        /*
         // Créer un programme pour la valeur de retour
         Program returnProgram = visit(ctx.expr());
         // on stock la valeur calclée par le visit dans la variable de retour
 
         int destReg = getNewRegister();
         returnProgram.addInstruction(new UAL(UAL.Op.XOR, destReg, destReg, destReg));
-        returnProgram.addInstruction(new UALi(UALi.Op.ADD, destReg, destReg, registerCounter - 1));
+        returnProgram.addInstruction(new UALi(UALi.Op.ADD, destReg, destReg, destReg - 1));
         // Ajouter l'instruction de retour
         returnProgram.addInstruction(new Ret());
-
-        return returnProgram;
+         */
+        return null;
     }
 
     @Override
@@ -653,8 +655,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // on gère le return
         if (ctx.getChild(i+1).getText().equals("return")) {
             program.addInstructions(visit(ctx.getChild(i+2)));
+            // Ajouter l'instruction de retour
+            program.addInstruction(new Ret());
         }
-       program.addInstructions(visit(ctx.getChild(i)));
 
         return program;
     }
@@ -680,6 +683,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitMain(grammarTCLParser.MainContext ctx) {
         Program program = new Program();
+        System.out.println("visitMain");
+        program.addInstruction(new UAL(UAL.Op.XOR, 0, 0, 0));
+        program.addInstruction(new UALi(UALi.Op.ADD, 1, 0, 1));
 
         // Générer le code pour chaque déclaration de fonction
         for (grammarTCLParser.Decl_fctContext declContext : ctx.decl_fct()) {
