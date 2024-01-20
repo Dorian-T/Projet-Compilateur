@@ -1,4 +1,5 @@
 package Type;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -72,14 +73,28 @@ public class UnknownType extends Type {
 
     @Override
     public Map<UnknownType, Type> unify(Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'unify'");
+        Map<UnknownType,Type> resultat = new HashMap<UnknownType,Type>();
+        if(this.equals(t)){
+
+        }else if(this.varName.equals("#")){
+            resultat.put(this, t);
+        }else if(t instanceof UnknownType){
+            if(((UnknownType) t).getVarName().equals("#")){
+                resultat.put((UnknownType) t, this);
+            }else{
+                resultat.put((UnknownType) t, this);
+            }
+        }else if(t instanceof Primitive_Type || t instanceof ArrayType){
+            resultat.put(this, t);
+        }else {
+            throw new Error("Unification error");
+        }
+        return resultat;    
     }
 
     @Override
     public boolean equals(Object t) {
-        return (t instanceof UnknownType)
-            && (((UnknownType)t).getVarName() == this.varName);
+        return (t instanceof UnknownType) && (((UnknownType)t).getVarName().equals(this.varName));
     }
 
     @Override
@@ -90,8 +105,7 @@ public class UnknownType extends Type {
 
     @Override
     public boolean contains(UnknownType v) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'contains'");
+        return this.equals(v) && !this.varName.equals("#");
     }
 
     /**
@@ -101,6 +115,6 @@ public class UnknownType extends Type {
      */
     @Override
     public String toString() {
-        return varName + ":" + varIndex + " ";
+        return varName;
     }
 }

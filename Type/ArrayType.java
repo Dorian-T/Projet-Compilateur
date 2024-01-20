@@ -1,4 +1,5 @@
 package Type;
+import java.util.HashMap;
 import java.util.Map;
 
 public class ArrayType extends Type{
@@ -22,8 +23,27 @@ public class ArrayType extends Type{
 
     @Override
     public Map<UnknownType, Type> unify(Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'unify'");
+        Map<UnknownType,Type> resultat = new HashMap<UnknownType,Type>();
+        if(this.equals(t) || t == null){
+            return null;
+        }else if(t instanceof UnknownType){
+            resultat.put((UnknownType) t, this);
+            return resultat;
+        }else if(t instanceof ArrayType){
+            resultat = this.getTabType().unify(((ArrayType) t).getTabType()); //TODO : vérifier que ça marche (ca marche pas)
+            
+            throw new Error("Uniplemented method unify for ArrayType and ArrayType");
+            // if (resultat.isEmpty()) {
+            //     return null;
+            // }else if(resultat.containsKey(this.getTabType())){
+                
+                
+            // }
+            
+            
+        }else{
+            throw new Error("Unification error");
+        }
     }
 
     @Override
@@ -39,8 +59,7 @@ public class ArrayType extends Type{
 
     @Override
     public boolean contains(UnknownType v) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'contains'");
+        return this.tabType.contains(v);
     }
 
     /**

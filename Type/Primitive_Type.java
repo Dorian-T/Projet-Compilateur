@@ -1,4 +1,5 @@
 package Type;
+import java.util.HashMap;
 import java.util.Map;
 
 public class Primitive_Type extends Type {
@@ -22,14 +23,22 @@ public class Primitive_Type extends Type {
     }
 
     @Override
-    public Map<UnknownType, Type> unify(Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'unify'");
+    public boolean equals(Object t) {        
+        return (t instanceof Primitive_Type) && 
+            (((Primitive_Type)t).getType().toString().equals(this.type.toString()));
     }
 
     @Override
-    public boolean equals(Object t) {
-        return (t instanceof Primitive_Type) && (((Primitive_Type)t).getType() == this.type);
+    public Map<UnknownType, Type> unify(Type t) {
+        Map<UnknownType,Type> resultat = new HashMap<UnknownType,Type>();
+        if(this.equals(t) || t == null){
+            return null;
+        }else if(t instanceof UnknownType){
+            resultat.put((UnknownType) t, this);
+            return resultat;
+        }else{
+            throw new Error("Unification error");
+        }
     }
 
     @Override
@@ -40,8 +49,7 @@ public class Primitive_Type extends Type {
 
     @Override
     public boolean contains(UnknownType v) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'contains'");
+        return false;
     }
 
     /**
@@ -51,9 +59,9 @@ public class Primitive_Type extends Type {
      */
     @Override
     public String toString() {
-        if (type == Type.Base.INT)
-            return "int";
+        if (type.equals(Type.Base.INT))
+            return "INT";
         else
-            return "bool";
+            return "BOOL";
     }
 }

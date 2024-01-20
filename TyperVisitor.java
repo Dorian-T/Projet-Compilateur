@@ -79,8 +79,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     @Override
     public Type visitVariable(grammarTCLParser.VariableContext ctx) {
         System.out.println("visit variable : " + ctx.getChild(0).getText());
-        if(this.types.containsKey(new UnknownType(ctx.getChild(0).getText(), 0))){ //on verifie si la variable existe deja dans le this.types
-            return this.types.get(new UnknownType(ctx.getChild(0).getText(), 0));
+        if(this.types.containsKey(new UnknownType(ctx))){ //on verifie si la variable existe deja dans le this.types
+            return this.types.get(new UnknownType(ctx));
         }else{
             throw new UnsupportedOperationException("Variable non déclarée");
         }
@@ -119,24 +119,35 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
             case "bool":
                 return new Primitive_Type(Type.Base.BOOL);
             case "auto":
-                return new Primitive_Type(Type.Base.UNKNOWN);
+                return new UnknownType();
             default:
-                System.out.println("Erreur : type non reconnu ( //TODO : tableau )");
+                throw new UnsupportedOperationException("Erreur : type non reconnu : " + ctx.getChild(0).getText());
         }
-        return null;
     }
 
     @Override
     public Type visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
-        System.out.println(" --- Tableau");
         return new ArrayType(visit(ctx.getChild(0)));
     }
 
     @Override
     public Type visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
+        System.out.println("visit declaration : " );
+        if(this.types.containsKey(new UnknownType(ctx.getChild(1)))){ //on verifie si la variable existe deja dans le this.types
+            throw new UnsupportedOperationException("Variable déjà déclarée");
+        }
 
-        System.out.println("visit declaration : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
-        this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)) );
+        if(visit(ctx.getChild(0)) instanceof UnknownType){ //si le type est auto, on met un UnknownType
+            this.types.put(new UnknownType(ctx.getChild(1)),new UnknownType(ctx.getChild(1)));
+        }else{  //sinon on met le type
+            this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)));
+        }
+        
+        if(ctx.getChildCount() > 3){ //declaration avec initialisation
+            System.out.println(" - initialisation ");
+
+            join(this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3))));
+        }
         return null;
     }
 
@@ -150,26 +161,14 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     public Type visitAssignment(grammarTCLParser.AssignmentContext ctx) {
         System.out.println("visit assignment : " );
         //verifie si la variable existe deja dans le this.types
-        if(this.types.containsKey(new UnknownType(ctx.getChild(0).getText(), 28))){ /// TODO : containsKey ne fonctionne pas comme ca
-            
+        System.out.println(" - variable : " + ctx.getChild(0));
+        if(this.types.containsKey(new UnknownType(ctx.getChild(0)))){
             //verifie si le type de la variable est le meme que celui de l'expression
-            Type type1 = this.types.get(new UnknownType(ctx.getChild(0).getText(), 28));
-            Type type2 = visit(ctx.getChild(2));
-            System.out.println(" - type1 : " + type1.toString());
-            System.out.println(" - type2 : " + type2.toString());
-            if(type1.equals(type2)){ //on verifie si les types sont les memes
-                System.out.println(" --- type1 == type2");
-                return null;
-            }else{
-                //TODO : essaye de faire un unification
-                throw new UnsupportedOperationException("Type non compatible");
-            }
+            join(this.types.get(new UnknownType(ctx.getChild(0))).unify(visit(ctx.getChild(2))));
         }else{
-
-            System.out.println(this.types.toString());
-            System.out.println(new UnknownType(ctx.getChild(0).getText(), 28).toString());
             throw new UnsupportedOperationException("Variable non déclarée");
         }
+        return null;
     }
 
     @Override
@@ -198,28 +197,29 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitReturn(grammarTCLParser.ReturnContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitReturn'");
+        System.out.println("visit return : " + ctx.getChild(1).getText());
+        return visit(ctx.getChild(1));
     }
 
     @Override
     public Type visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
 
         // il faut verifier que le type de retour est le meme que celui de l'expression
-        // TODO : il faut donc retourner le type de l'unification des types des return...
+        // il faut retourner le type de l'unification des types des return...
 
-        // ArrayList<Type> returnType = null;
-        // for(int i = 0; i < ctx.getChildCount(); i++){
-        //     System.out.println("visit core_fct : " + ctx.getChild(i).getText());
-        //     if(ctx.getChild(i).getText() == "return" ){
-        //         i++;
-        //         System.out.println(" - return");
-        //         returnType.add(visit(ctx.getChild(i)));
-        //     }
-        // }
-        // return returnType;
-        this.visitChildren(ctx);
-        return null;
+        Type returnType = visit(ctx.getChild(ctx.getChildCount() - 3));
+        Map<UnknownType, Type> result = new HashMap<UnknownType, Type>();
+
+        for(int i = 1; i < ctx.getChildCount() - 4; i++){
+
+            result = returnType.unify(visit(ctx.getChild(i)));
+            if(result != null && result.containsKey(returnType)){
+                returnType = result.get(returnType);
+            }
+            join(result);
+        }
+
+        return returnType; //Retroune les types de retour
     }
 
     @Override
@@ -228,25 +228,113 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         System.out.println("visit Decl_fct : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
 
         ArrayList<Type> args = new ArrayList<Type>();
-        for(int i = 3; i < ctx.getChildCount()-1; i+=3){
+        for(int i = 3; i < ctx.getChildCount()-2; i+=3){
 
             System.out.println(" - parametre : " + ctx.getChild(i).getText());
 
             args.add(visit(ctx.getChild(i)));
         }
         
-        System.out.println("fin boucle");
         this.types.put(new UnknownType(ctx.getChild(1)), new FunctionType(visit(ctx.getChild(0)), args));
-        visit(ctx.getChild(ctx.getChildCount()-1)); // on visite ensuite le bloc de la fonction
-        return null;
+
+        Type type_retour = visit(ctx.getChild(ctx.getChildCount()-1)); // on visite ensuite le bloc de la fonction
+        Type type_retour_fonction = ((FunctionType)this.types.get(new UnknownType(ctx.getChild(1)))).getReturnType();
+        join(type_retour_fonction.unify(type_retour));
+
+        return null; //on ne retourne rien
     }
 
     @Override
     public Type visitMain(grammarTCLParser.MainContext ctx) {
-        System.out.println("visit main");
+        System.out.println("========{visit main}========");
         types = new HashMap<UnknownType,Type>();
-        this.types.put(new UnknownType(ctx), new Primitive_Type(Type.Base.INT));
+
+        this.types.put(new UnknownType(ctx.getChild(ctx.getChildCount()-3)), new Primitive_Type(Type.Base.INT));
         
-        return this.visitChildren(ctx);
+        
+        
+        Type typeretour = this.visitChildren(ctx); // on visite les fils et on recupere le type de retour
+
+        if(typeretour != null){
+            System.out.println(" - type de retour : " + typeretour);
+            if(typeretour.equals(new Primitive_Type(Type.Base.INT))){
+                throw new UnsupportedOperationException("Le type de retour de la fonction main n'est pas entier");
+            }
+        }
+        System.out.println("========{fin visit main}========");
+
+        return null;
     }
+
+    public void join(Map<UnknownType,Type> h){
+        if(h == null){
+            return;
+        }
+        for (UnknownType key : h.keySet()){
+            this.types.remove(key);
+            this.types.put(key, h.get(key));
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+    // public Type Join(Type t1, Type t2){
+    //     if(t1.equals(t2)){
+    //         return t1;
+    //     }
+    //     else if(t1 instanceof UnknownType && t2 instanceof UnknownType){
+    //         /// TODO : retenir que les deux types sont les memes... je sais pas comment...
+    //         return t1;
+    //     }
+    //     else if(t1 instanceof UnknownType){
+    //         this.types.remove((UnknownType)t1);
+    //         this.types.put((UnknownType)t1, t2);
+    //         return t2;
+    //     }
+    //     else if(t2 instanceof UnknownType){
+    //         this.types.remove((UnknownType)t2);
+    //         this.types.put((UnknownType)t2, t1);
+    //         return t1;
+    //     }
+    //     else if(t1 instanceof ArrayType && t2 instanceof ArrayType){
+    //         return new ArrayType(Join(((ArrayType)t1),((ArrayType)t2)));
+    //     }
+    //     else{
+    //         throw new UnsupportedOperationException("Les types ne sont pas unifiables");
+    //     }
+    // }
+
+    // public Type Join(ArrayType t1, ArrayType t2){
+    //     if(t1.getTabType().equals(t2.getTabType())){
+    //         return t1;
+    //     }
+    //     else if(t1.getTabType() instanceof UnknownType && t2.getTabType() instanceof UnknownType){
+    //         /// TODO : retenir que les deux types sont les memes... je sais pas comment...
+    //         return t1;
+    //     }
+    //     else if(t1.getTabType() instanceof UnknownType){
+    //         this.types.remove((UnknownType)t1.getTabType());
+    //         this.types.put((UnknownType)t1.getTabType(), t2);
+    //         return t2;
+    //     }
+    //     else if(t2.getTabType() instanceof UnknownType){
+    //         this.types.remove((UnknownType)t2.getTabType());
+    //         this.types.put((UnknownType)t2.getTabType(), t1);
+    //         return t1;
+    //     }
+    //     else if(t1.getTabType() instanceof ArrayType && t2.getTabType() instanceof ArrayType){
+    //         return new ArrayType(Join(((ArrayType)t1.getTabType()),((ArrayType)t2.getTabType())));
+    //     }
+    //     else{
+    //         throw new UnsupportedOperationException("Les types ne sont pas unifiables");
+    //     }
+    // }
 }

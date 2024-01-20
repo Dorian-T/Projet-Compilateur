@@ -73,10 +73,10 @@ public class FunctionType extends Type {
      */
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append(returnType.toString() + "(");
+        String str = "";
+        str += returnType.toString() + "( ";
         for(int i = 0; i < argsTypes.size(); i++)
-            str.append(argsTypes.toString() + ",");
+            str += (argsTypes.get(i).toString() + " ");
         return str.toString() + ")";
     }
 }
