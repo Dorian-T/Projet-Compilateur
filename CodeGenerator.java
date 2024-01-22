@@ -93,56 +93,43 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitComparison(grammarTCLParser.ComparisonContext ctx) {
-        System.out.println("visitComparison");
         Program program = new Program();
-
-        // Récupère le code généré pour les deux expressions à comparer
-        Program leftExprProgram = visit(ctx.expr(0));
-        Program rightExprProgram = visit(ctx.expr(1));
-
-        // Génère le code assembleur pour la comparaison
-        int destRegister = getNewRegister();
-        program.addInstructions(leftExprProgram);
-        program.addInstructions(rightExprProgram);
-
-        // Compare les deux valeurs
-        String operator = ctx.getChild(1).getText();
-        switch (operator) {
-            case "==":
-                program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JEQU, destRegister, 0, "TrueLabel"));
-                break;
-            case "!=":
-                program.addInstruction(new CondJump("FalseLabel", CondJump.Op.JEQU, destRegister, 0, "FalseLabel"));
-                
-                // Cas True
-                program.addInstruction(new UALi("TrueLabel", UALi.Op.ADD, destRegister, 0, 1));
-                program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-                
-                // Cas False
-                program.addInstruction(new UALi("FalseLabel", UALi.Op.ADD, destRegister, 0, 0));
-                break;
-            case ">":
-                program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JSUP, destRegister, 0, "TrueLabel"));
-                
-                // Cas False
-                program.addInstruction(new UALi("FalseLabel", UALi.Op.ADD, destRegister, 0, 0));
-                program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-                
-                // Cas True
-                program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
-                break;
-            default:
-                throw new UnsupportedOperationException("Unsupported comparison operator: " + operator);
-        }
-
-        // Cas False
-        program.addInstruction(new UALi("EndLabel", UALi.Op.ADD, destRegister, 0, 0));
-
-        // Cas True
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
+        
+        // Évaluer la première expression de la comparaison
+        Program leftProgram = visit(ctx.expr(0));
+        program.addInstructions(leftProgram);
+        int leftReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de la première expression
+        
+        // Évaluer la seconde expression de la comparaison
+        Program rightProgram = visit(ctx.expr(1));
+        program.addInstructions(rightProgram);
+        int rightReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de la seconde expression
+    
+        // Utiliser un nouveau registre pour le résultat de la comparaison
+        int resultReg = getNewRegister();
+    
+        // Initialiser le registre de résultat à 0 (faux)
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
+    
+        // Créer une étiquette pour le cas où la comparaison est vraie
+        String trueLabel = generateNewLabel();
+        // Créer une étiquette pour la suite du code après la comparaison
+        String continueLabel = generateNewLabel();
+    
+        // Ajouter le code pour la comparaison
+        program.addInstruction(new UAL(UAL.Op.SUB, resultReg, leftReg, rightReg)); // Résultat = expr gauche - expr droite
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, resultReg, 0, trueLabel)); // Si égalité, sauter à trueLabel
+    
+        // Si les valeurs ne sont pas égales, le résultat reste 0 (faux) et on saute à continueLabel
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
+    
+        // Si les valeurs sont égales, on met le résultat à 1 (vrai) et on continue
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1)); // Mettre le résultat à vrai
+    
+        // Continuer l'exécution après la comparaison
+        program.addInstruction(new Label(continueLabel));
+    
         return program;
     }
 
@@ -568,71 +555,68 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitWhile(grammarTCLParser.WhileContext ctx) {
         Program program = new Program();
-    
-        // Étiquettes pour le saut conditionnel et la fin de la boucle
-        String conditionLabel = generateNewLabel();
-        String endLabel = generateNewLabel();
-    
-        // Ajoute une étiquette pour la condition initiale
-        program.addInstruction(new Label(conditionLabel));
-    
-        // Génère le code pour l'expression conditionnelle
+
+        // Création de l'étiquette pour le début de la boucle while
+        String startLabel = generateNewLabel();
+        program.addInstruction(new Label(startLabel));
+
+        // Générer le code pour l'expression conditionnelle
         Program conditionProgram = visit(ctx.expr());
-        for (Instruction instruction : conditionProgram.getInstructions()) {
-            program.addInstruction(instruction);
-        }
-    
-        // Crée une instruction de saut conditionnel
-        program.addInstruction(new CondJump(endLabel, CondJump.Op.JNEQ, conditionRegister, 0, ""));
-    
-        // Génère le code pour le bloc de la boucle
-        Program loopBlockProgram = visit(ctx.instr());
-        for (Instruction instruction : loopBlockProgram.getInstructions()) {
-            program.addInstruction(instruction);
-        }
-    
-        // Ajoute une étiquette pour le saut conditionnel de retour
-        program.addInstruction(new JumpCall(conditionLabel, JumpCall.Op.JMP, ""));
-    
-        // Ajoute une étiquette pour la fin de la boucle
+        program.addInstructions(conditionProgram);
+
+        // Création de l'étiquette pour la sortie de la boucle
+        String endLabel = generateNewLabel();
+        
+        // Condition pour sortir de la boucle si elle n'est pas remplie
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, endLabel));
+
+        // Générer le code pour le corps de la boucle
+        Program bodyProgram = visit(ctx.instr());
+        program.addInstructions(bodyProgram);
+
+        // Sauter au début de la boucle
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, startLabel));
+
+        // Étiquette de fin de la boucle
         program.addInstruction(new Label(endLabel));
-    
+
         return program;
     }
     
     @Override
     public Program visitFor(grammarTCLParser.ForContext ctx) {
         Program program = new Program();
-
-        // Générer le code pour l'initialisation
-        Program initProgram = visit(ctx.instr(0)); 
+    
+        // Supposons que la première instruction dans 'instr()' est l'initialisation
+        Program initProgram = visit(ctx.instr(0));
         program.addInstructions(initProgram);
-
-        // Étiquette de condition de boucle
-        String loopConditionLabel = generateNewLabel();
-        program.addInstruction(new Label(loopConditionLabel));
-
-        // Générer le code pour la condition de la boucle
+    
+        // Étiquette pour le début de la boucle
+        String startLabel = generateNewLabel();
+        program.addInstruction(new Label(startLabel));
+    
+        // Condition de la boucle
         Program conditionProgram = visit(ctx.expr());
         program.addInstructions(conditionProgram);
-
-        // Supposons qu'il y ait une instruction de saut basée sur la condition
-        program.addInstruction(new CondJump("JMP", CondJump.Op.JZ, getNewRegister(), 0, "EXIT_LOOP"));
-
-        // Générer le code pour le corps de la boucle
-        Program bodyProgram = visit(ctx.instr(1)); 
+    
+        // Étiquette pour la fin de la boucle
+        String endLabel = generateNewLabel();
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, endLabel));
+    
+        // Corps de la boucle (supposons que c'est la deuxième instruction)
+        Program bodyProgram = visit(ctx.instr(1));
         program.addInstructions(bodyProgram);
-
-        // Générer le code pour l'incrémentation
-        Program incrementProgram = visit(ctx.instr(2));
-        program.addInstructions(incrementProgram);
-
-        // Sauter de nouveau à la condition de la boucle
-        program.addInstruction(new JumpCall("JMP", JumpCall.Op.JMP, loopConditionLabel));
-
-        // Étiquette de sortie
-        program.addInstruction(new Label("EXIT_LOOP"));
-
+    
+        // Supposons que la troisième instruction est l'itération
+        Program iterationProgram = visit(ctx.instr(2));
+        program.addInstructions(iterationProgram);
+    
+        // Sauter au début de la boucle
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, startLabel));
+    
+        // Étiquette de fin
+        program.addInstruction(new Label(endLabel));
+    
         return program;
     }
 
