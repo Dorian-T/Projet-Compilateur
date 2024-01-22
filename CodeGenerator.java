@@ -67,6 +67,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitNegation(grammarTCLParser.NegationContext ctx) {
+        System.out.println("visitNegation");
         Program program = new Program();
         
         // Évaluer l'expression à nier
@@ -103,6 +104,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitComparison(grammarTCLParser.ComparisonContext ctx) {
+        System.out.println("visitComparison");
         Program program = new Program();
         
         // Évaluer la première expression de la comparaison
@@ -145,6 +147,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitOr(grammarTCLParser.OrContext ctx) {
+        System.out.println("visitOr");
         Program program = new Program();
         
         // Évaluer la première expression de l'opération OR
@@ -186,6 +189,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
  
     @Override
     public Program visitOpposite(grammarTCLParser.OppositeContext ctx) {
+        System.out.println("visitOpposite");
         Program program = new Program();
         
         // Évaluer l'expression dont on doit inverser le signe
@@ -207,7 +211,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitInteger(grammarTCLParser.IntegerContext ctx) {
-        
+        System.out.println("visitInteger");
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
@@ -219,23 +223,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_access(grammarTCLParser.Tab_accessContext ctx) {
-        System.out.println("visitTab_access");
-        Program program = new Program();
-
-        // Récupérer le type du tableau et l'indice
-        //Type tabType = types.get(ctx.ID().getText());
-
-        // Générer le code assembleur pour chaque expression dans la liste
-        for (grammarTCLParser.ExprContext exprCtx : ctx.expr()) {
-            Program indexProgram = visit(exprCtx);
-            program.addInstructions(indexProgram);
-            program.addInstruction(new UAL("POP", UAL.Op.POP, 2, 0, 0)); // Récupérer la valeur de l'indice de la pile
-            program.addInstruction(new Mem("LOAD", Mem.Op.LD, 1, 1)); // Charger l'adresse de base du tableau
-            program.addInstruction(new UAL("ADD", UAL.Op.ADD, 1, 1, 2)); // Ajouter l'indice à l'adresse de base
-            program.addInstruction(new IO("PUSH", IO.Op.OUT, 1)); // Pousser le résultat (adresse de l'élément du tableau) sur la pile
-        }
-
-        return program;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visitTab_access'");
     }
 
     @Override
@@ -271,7 +260,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitBoolean(grammarTCLParser.BooleanContext ctx) {
-
+        System.out.println("visitBoolean");
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
@@ -283,6 +272,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitAnd(grammarTCLParser.AndContext ctx) {
+        System.out.println("visitAnd");
         Program program = new Program();
         
         // Évaluer la première expression de l'opération AND
@@ -328,6 +318,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
+        System.out.println("visitVariable");
         Program program = new Program();
         //on copie la variable dans un nouveau registre
         int newReg = getNewRegister();
@@ -386,34 +377,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
-        System.out.println("visitTab_initialization");
-        Program program = new Program();
-    
-        // Récupérer le type du tableau
-       // Type tabType = types.get(ctx.getChild(0).getText()); // Assurez-vous que le nom du type est au bon endroit dans votre grammaire
-    
-        // Générer le code pour l'allocation de mémoire pour le tableau
-        int arraySize = ctx.expr().size();
-        int arrayDestRegister = getNewRegister();
-        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, arrayDestRegister, 0, arraySize));
-    
-        // Logique pour l'allocation de mémoire à faire 
-        // ...
-    
-        int currentElementRegister = arrayDestRegister + 1;
-    
-        // Générer le code pour chaque élément du tableau
-        for (int i = 0; i < arraySize; i++) {
-            // Visite chaque expression dans la liste
-            Program exprProgram = visit(ctx.expr(i));
-            // Ajoute les instructions générées pour l'expression courante
-            program.addInstructions(exprProgram);
-            // Ajoute une instruction pour stocker la valeur dans le tableau
-            program.addInstruction(new Mem("STORE", Mem.Op.ST, currentElementRegister, arrayDestRegister));
-            currentElementRegister++;
-        }
-    
-        return program;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visitTab_initialization'");
     }
     
     @Override
@@ -455,20 +420,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
-        System.out.println("visitTab_type");
-        Program program = new Program();
-
-        // Récupère le nom du type de base depuis le sous-contexte de type
-        //String baseTypeName = ctx.type().BASE_TYPE().getText();
-
-        // Récupère la taille du tableau depuis le sous-contexte INT
-        //int arraySize = Integer.parseInt(ctx.INT().getText());
-
-        // Génère le code pour la déclaration du tableau
-        //program.addInstruction(new Label(baseTypeName)); // Crée une étiquette pour le type de base
-        //program.addInstruction(new Mem("ALLOC", Mem.Op.LD, getNewRegister(), arraySize)); // Alloue de la mémoire pour le tableau
-
-        return program;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visitTab_type'");
     }
 
     @Override
@@ -529,9 +482,11 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitBlock");
         Program program = new Program();
 
-        // Visite chaque instruction dans le bloc
-        for (grammarTCLParser.InstrContext instrContext : ctx.instr()) {
-            Program instructionProgram = visit(instrContext);
+        // Itérer sur chaque instruction dans le bloc
+        for (grammarTCLParser.InstrContext instruction : ctx.instr()) {
+            // Visiter chaque instruction pour générer le code correspondant
+            Program instructionProgram = visit(instruction);
+            // Ajouter le programme généré par l'instruction au programme global du bloc
             program.addInstructions(instructionProgram);
         }
 
@@ -540,6 +495,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitIf(grammarTCLParser.IfContext ctx) {
+        System.out.println("visitIf");
         Program program = new Program();
 
         // Génère le code pour l'expression conditionnelle
@@ -575,6 +531,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitWhile(grammarTCLParser.WhileContext ctx) {
+        System.out.println("visitWhile");
         Program program = new Program();
 
         // Création de l'étiquette pour le début de la boucle while
@@ -606,6 +563,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitFor(grammarTCLParser.ForContext ctx) {
+        System.out.println("visitFor");
         Program program = new Program();
     
         // Supposons que la première instruction dans 'instr()' est l'initialisation
