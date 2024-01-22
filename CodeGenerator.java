@@ -69,80 +69,79 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitNegation(grammarTCLParser.NegationContext ctx) {
         System.out.println("visitNegation");
         Program program = new Program();
-
-        // Récupère le code généré pour l'expression à nier
-        Program exprProgram = visit(ctx.expr());
-
-        // Génère le code assembleur pour la négation
-        int destRegister = getNewRegister();
         
-        // Ajoute toutes les instructions de l'expression à nier
+        // Évaluer l'expression à nier
+        Program exprProgram = visit(ctx.expr());
         program.addInstructions(exprProgram);
-
-        // Ajoute une instruction pour charger 1 dans le registre de destination
-        program.addInstruction(new UALi("LOADI", UALi.Op.ADD, destRegister, 0, 1));
-
-        // Ajoute une instruction pour soustraire l'expression du registre de destination
-        program.addInstruction(new UALi("SUB", UALi.Op.SUB, destRegister, destRegister, 1));
-
-        // Ajoute une instruction pour pousser la valeur négative sur la pile
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
-
+        int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
+    
+        // Utiliser un nouveau registre pour le résultat de la négation
+        int resultReg = getNewRegister();
+    
+        // Initialiser le registre de résultat à 0
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
+    
+        // Créer une étiquette pour le cas où l'expression est fausse (et donc la négation vraie)
+        String trueLabel = generateNewLabel();
+        // Créer une étiquette pour la suite du code après la négation
+        String continueLabel = generateNewLabel();
+    
+        // Si l'expression est fausse (0), sauter à trueLabel pour mettre le résultat à 1
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, exprReg, 0, trueLabel));
+    
+        // Si l'expression est vraie (non 0), le résultat reste 0 (faux) et on saute à continueLabel
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
+    
+        // Mettre le résultat à 1 si l'expression était fausse
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1)); // Mettre le résultat à vrai (1)
+    
+        // Continuer l'exécution après la négation
+        program.addInstruction(new Label(continueLabel));
+    
         return program;
     }
-
+    
     @Override
     public Program visitComparison(grammarTCLParser.ComparisonContext ctx) {
         System.out.println("visitComparison");
         Program program = new Program();
-
-        // Récupère le code généré pour les deux expressions à comparer
-        Program leftExprProgram = visit(ctx.expr(0));
-        Program rightExprProgram = visit(ctx.expr(1));
-
-        // Génère le code assembleur pour la comparaison
-        int destRegister = getNewRegister();
-        program.addInstructions(leftExprProgram);
-        program.addInstructions(rightExprProgram);
-
-        // Compare les deux valeurs
-        String operator = ctx.getChild(1).getText();
-        switch (operator) {
-            case "==":
-                program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JEQU, destRegister, 0, "TrueLabel"));
-                break;
-            case "!=":
-                program.addInstruction(new CondJump("FalseLabel", CondJump.Op.JEQU, destRegister, 0, "FalseLabel"));
-                
-                // Cas True
-                program.addInstruction(new UALi("TrueLabel", UALi.Op.ADD, destRegister, 0, 1));
-                program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-                
-                // Cas False
-                program.addInstruction(new UALi("FalseLabel", UALi.Op.ADD, destRegister, 0, 0));
-                break;
-            case ">":
-                program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JSUP, destRegister, 0, "TrueLabel"));
-                
-                // Cas False
-                program.addInstruction(new UALi("FalseLabel", UALi.Op.ADD, destRegister, 0, 0));
-                program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-                
-                // Cas True
-                program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
-                break;
-            default:
-                throw new UnsupportedOperationException("Unsupported comparison operator: " + operator);
-        }
-
-        // Cas False
-        program.addInstruction(new UALi("EndLabel", UALi.Op.ADD, destRegister, 0, 0));
-
-        // Cas True
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
+        
+        // Évaluer la première expression de la comparaison
+        Program leftProgram = visit(ctx.expr(0));
+        program.addInstructions(leftProgram);
+        int leftReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de la première expression
+        
+        // Évaluer la seconde expression de la comparaison
+        Program rightProgram = visit(ctx.expr(1));
+        program.addInstructions(rightProgram);
+        int rightReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de la seconde expression
+    
+        // Utiliser un nouveau registre pour le résultat de la comparaison
+        int resultReg = getNewRegister();
+    
+        // Initialiser le registre de résultat à 0 (faux)
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
+    
+        // Créer une étiquette pour le cas où la comparaison est vraie
+        String trueLabel = generateNewLabel();
+        // Créer une étiquette pour la suite du code après la comparaison
+        String continueLabel = generateNewLabel();
+    
+        // Ajouter le code pour la comparaison
+        program.addInstruction(new UAL(UAL.Op.SUB, resultReg, leftReg, rightReg)); // Résultat = expr gauche - expr droite
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, resultReg, 0, trueLabel)); // Si égalité, sauter à trueLabel
+    
+        // Si les valeurs ne sont pas égales, le résultat reste 0 (faux) et on saute à continueLabel
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
+    
+        // Si les valeurs sont égales, on met le résultat à 1 (vrai) et on continue
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1)); // Mettre le résultat à vrai
+    
+        // Continuer l'exécution après la comparaison
+        program.addInstruction(new Label(continueLabel));
+    
         return program;
     }
 
@@ -150,31 +149,40 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitOr(grammarTCLParser.OrContext ctx) {
         System.out.println("visitOr");
         Program program = new Program();
+        
+        // Évaluer la première expression de l'opération OR
+        Program leftProgram = visit(ctx.expr(0));
+        program.addInstructions(leftProgram);
+        int leftReg = registerCounter - 1; // Le registre contenant le résultat de la première expression
+        
+        // Évaluer la seconde expression de l'opération OR
+        Program rightProgram = visit(ctx.expr(1));
+        program.addInstructions(rightProgram);
+        int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
 
-        // Récupère le code généré pour les deux expressions à comparer
-        Program leftExprProgram = visit(ctx.expr(0));
-        Program rightExprProgram = visit(ctx.expr(1));
+        // Utiliser un nouveau registre pour le résultat de l'opération OR
+        int resultReg = getNewRegister();
+        
+        // Initialiser le registre de résultat à 0 (faux)
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
 
-        // Génère le code assembleur pour l'opération logique "||"
-        int destRegister = getNewRegister();
-        program.addInstructions(leftExprProgram);
+        // Créer des étiquettes pour la logique de l'opération OR
+        String trueLabel = generateNewLabel();
+        String continueLabel = generateNewLabel();
 
-        // Sauter à l'étiquette TrueLabel si l'opérande de gauche est vrai
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister));
-        program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JNEQ, destRegister, 0, "TrueLabel"));
+        // Si l'une des expressions est vraie, sauter à trueLabel
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, leftReg, 0, trueLabel));
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, rightReg, 0, trueLabel));
 
-        // Si l'opérande de gauche est faux, évaluez l'opérande de droite
-        program.addInstructions(rightExprProgram);
-        program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
+        // Si les deux expressions sont fausses, on saute à continueLabel, le résultat reste faux
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
 
-        // TrueLabel, l'opérande de gauche est vrai
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister));
+        // Si l'une des expressions est vraie, on met le résultat à 1 (vrai)
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1));
 
-        // Effectuer l'opération logique OR
-        program.addInstruction(new UAL("OR", UAL.Op.OR, destRegister, destRegister, 1));
-
-        // Poussez le résultat de l'opération OR sur la pile
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
+        // Continuer l'exécution après l'opération OR
+        program.addInstruction(new Label(continueLabel));
 
         return program;
     }
@@ -183,36 +191,27 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitOpposite(grammarTCLParser.OppositeContext ctx) {
         System.out.println("visitOpposite");
         Program program = new Program();
-
-        // Récupère le code généré pour l'expression à nier
+        
+        // Évaluer l'expression dont on doit inverser le signe
         Program exprProgram = visit(ctx.expr());
-
-        // Génère le code assembleur pour l'opération logique "!"
-        int destRegister = getNewRegister();
         program.addInstructions(exprProgram);
-
-        // Sauter à l'étiquette TrueLabel si l'opérande est faux
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister));
-        program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JZ, destRegister, 0, "TrueLabel"));
-
-        // Si l'opérande est vrai, pousser faux sur la pile
-        program.addInstruction(new JumpCall("FalseLabel", JumpCall.Op.JMP, "FalseLabel"));
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
-        // Si l'opérande est faux, pousser vrai sur la pile
-        program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
-
-        // Fin de la négation
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
+        int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
+    
+        // Utiliser un nouveau registre pour le résultat de l'opération d'opposition
+        int resultReg = getNewRegister();
+    
+        // Initialiser le registre de résultat à 0 (pour préparer l'opération de soustraction)
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
+    
+        // Inverser le signe de l'expression en soustrayant sa valeur de 0
+        program.addInstruction(new UAL(UAL.Op.SUB, resultReg, resultReg, exprReg)); // Résultat = 0 - exprReg
+    
         return program;
     }
 
     @Override
     public Program visitInteger(grammarTCLParser.IntegerContext ctx) {
-        
+        System.out.println("visitInteger");
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
@@ -224,23 +223,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_access(grammarTCLParser.Tab_accessContext ctx) {
-        System.out.println("visitTab_access");
-        Program program = new Program();
-
-        // Récupérer le type du tableau et l'indice
-        //Type tabType = types.get(ctx.ID().getText());
-
-        // Générer le code assembleur pour chaque expression dans la liste
-        for (grammarTCLParser.ExprContext exprCtx : ctx.expr()) {
-            Program indexProgram = visit(exprCtx);
-            program.addInstructions(indexProgram);
-            program.addInstruction(new UAL("POP", UAL.Op.POP, 2, 0, 0)); // Récupérer la valeur de l'indice de la pile
-            program.addInstruction(new Mem("LOAD", Mem.Op.LD, 1, 1)); // Charger l'adresse de base du tableau
-            program.addInstruction(new UAL("ADD", UAL.Op.ADD, 1, 1, 2)); // Ajouter l'indice à l'adresse de base
-            program.addInstruction(new IO("PUSH", IO.Op.OUT, 1)); // Pousser le résultat (adresse de l'élément du tableau) sur la pile
-        }
-
-        return program;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visitTab_access'");
     }
 
     @Override
@@ -276,7 +260,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitBoolean(grammarTCLParser.BooleanContext ctx) {
-
+        System.out.println("visitBoolean");
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
@@ -290,37 +274,51 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitAnd(grammarTCLParser.AndContext ctx) {
         System.out.println("visitAnd");
         Program program = new Program();
+        
+        // Évaluer la première expression de l'opération AND
+        Program leftProgram = visit(ctx.expr(0));
+        program.addInstructions(leftProgram);
+        int leftReg = registerCounter - 1; // Le registre contenant le résultat de la première expression
+        
+        // Évaluer la seconde expression de l'opération AND
+        Program rightProgram = visit(ctx.expr(1));
+        program.addInstructions(rightProgram);
+        int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
     
-        // Récupère le code généré pour les deux expressions à comparer
-        Program leftExprProgram = visit(ctx.expr(0));
-        Program rightExprProgram = visit(ctx.expr(1));
+        // Utiliser un nouveau registre pour le résultat de l'opération AND
+        int resultReg = getNewRegister();
+        
+        // Initialiser le registre de résultat à 0 (faux), il sera mis à 1 (vrai) seulement si les deux expressions sont vraies
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
     
-        // Génère le code assembleur pour l'opération logique "&&"
-        int destRegister = getNewRegister();
-        program.addInstructions(leftExprProgram);
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister)); // Pop la valeur de l'opérande de gauche
-        program.addInstruction(new CondJump("FalseLabel", CondJump.Op.JZ, destRegister, 0, "FalseLabel")); // Sauter à FalseLabel si l'opérande de gauche est faux
+        // Créer une étiquette pour le cas où les deux expressions sont vraies
+        String trueLabel = generateNewLabel();
+        // Créer une étiquette pour la suite du code après l'opération AND
+        String continueLabel = generateNewLabel();
     
-        // Si l'opérande de gauche est vrai, évaluer l'opérande de droite
-        program.addInstructions(rightExprProgram);
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister)); // Pop la valeur de l'opérande de droite
-        program.addInstruction(new CondJump("FalseLabel", CondJump.Op.JZ, destRegister, 0, "FalseLabel")); // Sauter à FalseLabel si l'opérande de droite est faux
+        // Vérifier si la première expression est vraie (non 0)
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, leftReg, 0, trueLabel));
+        
+        // Sauter à continueLabel si la première expression est fausse, car l'opération AND ne peut être vraie
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
     
-        // Si les deux opérandes sont vrais, pousser vrai sur la pile
-        program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
+        // Vérifier si la seconde expression est vraie (non 0), si on est arrivé ici, c'est que la première est déjà vraie
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, rightReg, 0, continueLabel)); // Si vraie, sauter à continueLabel sans changer le résultat
     
-        // FalseLabel: pousser faux sur la pile
-        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, destRegister, 0, 0));
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
+        // Si les deux expressions sont vraies, mettre le résultat à 1 (vrai)
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1)); // Mettre le résultat à vrai (1)
     
-        // TrueLabel: étiquette de fin
-        program.addInstruction(new Label("TrueLabel: ; TrueLabel, both operands are true"));
+        // Continuer l'exécution après l'opération AND
+        program.addInstruction(new Label(continueLabel));
     
         return program;
     }
     
+    
     @Override
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
+        System.out.println("visitVariable");
         Program program = new Program();
         //on copie la variable dans un nouveau registre
         int newReg = getNewRegister();
@@ -379,34 +377,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
-        System.out.println("visitTab_initialization");
-        Program program = new Program();
-    
-        // Récupérer le type du tableau
-       // Type tabType = types.get(ctx.getChild(0).getText()); // Assurez-vous que le nom du type est au bon endroit dans votre grammaire
-    
-        // Générer le code pour l'allocation de mémoire pour le tableau
-        int arraySize = ctx.expr().size();
-        int arrayDestRegister = getNewRegister();
-        program.addInstruction(new UALi("LOADI", UALi.Op.LOADI, arrayDestRegister, 0, arraySize));
-    
-        // Logique pour l'allocation de mémoire à faire 
-        // ...
-    
-        int currentElementRegister = arrayDestRegister + 1;
-    
-        // Générer le code pour chaque élément du tableau
-        for (int i = 0; i < arraySize; i++) {
-            // Visite chaque expression dans la liste
-            Program exprProgram = visit(ctx.expr(i));
-            // Ajoute les instructions générées pour l'expression courante
-            program.addInstructions(exprProgram);
-            // Ajoute une instruction pour stocker la valeur dans le tableau
-            program.addInstruction(new Mem("STORE", Mem.Op.ST, currentElementRegister, arrayDestRegister));
-            currentElementRegister++;
-        }
-    
-        return program;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visitTab_initialization'");
     }
     
     @Override
@@ -448,20 +420,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
-        System.out.println("visitTab_type");
-        Program program = new Program();
-
-        // Récupère le nom du type de base depuis le sous-contexte de type
-        //String baseTypeName = ctx.type().BASE_TYPE().getText();
-
-        // Récupère la taille du tableau depuis le sous-contexte INT
-        //int arraySize = Integer.parseInt(ctx.INT().getText());
-
-        // Génère le code pour la déclaration du tableau
-        //program.addInstruction(new Label(baseTypeName)); // Crée une étiquette pour le type de base
-        //program.addInstruction(new Mem("ALLOC", Mem.Op.LD, getNewRegister(), arraySize)); // Alloue de la mémoire pour le tableau
-
-        return program;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'visitTab_type'");
     }
 
     @Override
@@ -486,14 +446,15 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitPrint(grammarTCLParser.PrintContext ctx) {
         System.out.println("visitPrint");
         Program program = new Program();
-    
-        // Récupère le texte associé au contexte PrintContext
-        //String expressionText = ctx.getText();
-    
-        // Génère le code pour l'instruction d'impression
-        int destRegister = getNewRegister();
-        program.addInstruction(new IO("OUT", IO.Op.OUT, destRegister));
-    
+        
+        // Récupérer le nom de la variable à imprimer
+        String varName = ctx.VAR().getText();
+        
+        // Récupérer le registre ou l'adresse associée à la variable
+        int varAddress = variableTable.get(varName);
+
+        program.addInstruction(new IO(IO.Op.PRINT, varAddress));
+
         return program;
     }
     
@@ -521,9 +482,11 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitBlock");
         Program program = new Program();
 
-        // Visite chaque instruction dans le bloc
-        for (grammarTCLParser.InstrContext instrContext : ctx.instr()) {
-            Program instructionProgram = visit(instrContext);
+        // Itérer sur chaque instruction dans le bloc
+        for (grammarTCLParser.InstrContext instruction : ctx.instr()) {
+            // Visiter chaque instruction pour générer le code correspondant
+            Program instructionProgram = visit(instruction);
+            // Ajouter le programme généré par l'instruction au programme global du bloc
             program.addInstructions(instructionProgram);
         }
 
@@ -532,6 +495,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitIf(grammarTCLParser.IfContext ctx) {
+        System.out.println("visitIf");
         Program program = new Program();
 
         // Génère le code pour l'expression conditionnelle
@@ -567,72 +531,71 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitWhile(grammarTCLParser.WhileContext ctx) {
+        System.out.println("visitWhile");
         Program program = new Program();
-    
-        // Étiquettes pour le saut conditionnel et la fin de la boucle
-        String conditionLabel = generateNewLabel();
-        String endLabel = generateNewLabel();
-    
-        // Ajoute une étiquette pour la condition initiale
-        program.addInstruction(new Label(conditionLabel));
-    
-        // Génère le code pour l'expression conditionnelle
+
+        // Création de l'étiquette pour le début de la boucle while
+        String startLabel = generateNewLabel();
+        program.addInstruction(new Label(startLabel));
+
+        // Générer le code pour l'expression conditionnelle
         Program conditionProgram = visit(ctx.expr());
-        for (Instruction instruction : conditionProgram.getInstructions()) {
-            program.addInstruction(instruction);
-        }
-    
-        // Crée une instruction de saut conditionnel
-        program.addInstruction(new CondJump(endLabel, CondJump.Op.JNEQ, conditionRegister, 0, ""));
-    
-        // Génère le code pour le bloc de la boucle
-        Program loopBlockProgram = visit(ctx.instr());
-        for (Instruction instruction : loopBlockProgram.getInstructions()) {
-            program.addInstruction(instruction);
-        }
-    
-        // Ajoute une étiquette pour le saut conditionnel de retour
-        program.addInstruction(new JumpCall(conditionLabel, JumpCall.Op.JMP, ""));
-    
-        // Ajoute une étiquette pour la fin de la boucle
+        program.addInstructions(conditionProgram);
+
+        // Création de l'étiquette pour la sortie de la boucle
+        String endLabel = generateNewLabel();
+        
+        // Condition pour sortir de la boucle si elle n'est pas remplie
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, endLabel));
+
+        // Générer le code pour le corps de la boucle
+        Program bodyProgram = visit(ctx.instr());
+        program.addInstructions(bodyProgram);
+
+        // Sauter au début de la boucle
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, startLabel));
+
+        // Étiquette de fin de la boucle
         program.addInstruction(new Label(endLabel));
-    
+
         return program;
     }
     
     @Override
     public Program visitFor(grammarTCLParser.ForContext ctx) {
+        System.out.println("visitFor");
         Program program = new Program();
-
-        // Générer le code pour l'initialisation
-        Program initProgram = visit(ctx.instr(0)); 
+    
+        // Supposons que la première instruction dans 'instr()' est l'initialisation
+        Program initProgram = visit(ctx.instr(0));
         program.addInstructions(initProgram);
-
-        // Étiquette de condition de boucle
-        String loopConditionLabel = generateNewLabel();
-        program.addInstruction(new Label(loopConditionLabel));
-
-        // Générer le code pour la condition de la boucle
+    
+        // Étiquette pour le début de la boucle
+        String startLabel = generateNewLabel();
+        program.addInstruction(new Label(startLabel));
+    
+        // Condition de la boucle
         Program conditionProgram = visit(ctx.expr());
         program.addInstructions(conditionProgram);
-
-        // Supposons qu'il y ait une instruction de saut basée sur la condition
-        program.addInstruction(new CondJump("JMP", CondJump.Op.JZ, getNewRegister(), 0, "EXIT_LOOP"));
-
-        // Générer le code pour le corps de la boucle
-        Program bodyProgram = visit(ctx.instr(1)); 
+    
+        // Étiquette pour la fin de la boucle
+        String endLabel = generateNewLabel();
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, endLabel));
+    
+        // Corps de la boucle (supposons que c'est la deuxième instruction)
+        Program bodyProgram = visit(ctx.instr(1));
         program.addInstructions(bodyProgram);
-
-        // Générer le code pour l'incrémentation
-        Program incrementProgram = visit(ctx.instr(2));
-        program.addInstructions(incrementProgram);
-
-        // Sauter de nouveau à la condition de la boucle
-        program.addInstruction(new JumpCall("JMP", JumpCall.Op.JMP, loopConditionLabel));
-
-        // Étiquette de sortie
-        program.addInstruction(new Label("EXIT_LOOP"));
-
+    
+        // Supposons que la troisième instruction est l'itération
+        Program iterationProgram = visit(ctx.instr(2));
+        program.addInstructions(iterationProgram);
+    
+        // Sauter au début de la boucle
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, startLabel));
+    
+        // Étiquette de fin
+        program.addInstruction(new Label(endLabel));
+    
         return program;
     }
 
