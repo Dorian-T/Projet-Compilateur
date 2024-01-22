@@ -67,29 +67,40 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     
     @Override
     public Program visitNegation(grammarTCLParser.NegationContext ctx) {
-        System.out.println("visitNegation");
         Program program = new Program();
-
-        // Récupère le code généré pour l'expression à nier
-        Program exprProgram = visit(ctx.expr());
-
-        // Génère le code assembleur pour la négation
-        int destRegister = getNewRegister();
         
-        // Ajoute toutes les instructions de l'expression à nier
+        // Évaluer l'expression à nier
+        Program exprProgram = visit(ctx.expr());
         program.addInstructions(exprProgram);
-
-        // Ajoute une instruction pour charger 1 dans le registre de destination
-        program.addInstruction(new UALi("LOADI", UALi.Op.ADD, destRegister, 0, 1));
-
-        // Ajoute une instruction pour soustraire l'expression du registre de destination
-        program.addInstruction(new UALi("SUB", UALi.Op.SUB, destRegister, destRegister, 1));
-
-        // Ajoute une instruction pour pousser la valeur négative sur la pile
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
-
+        int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
+    
+        // Utiliser un nouveau registre pour le résultat de la négation
+        int resultReg = getNewRegister();
+    
+        // Initialiser le registre de résultat à 0
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
+    
+        // Créer une étiquette pour le cas où l'expression est fausse (et donc la négation vraie)
+        String trueLabel = generateNewLabel();
+        // Créer une étiquette pour la suite du code après la négation
+        String continueLabel = generateNewLabel();
+    
+        // Si l'expression est fausse (0), sauter à trueLabel pour mettre le résultat à 1
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, exprReg, 0, trueLabel));
+    
+        // Si l'expression est vraie (non 0), le résultat reste 0 (faux) et on saute à continueLabel
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
+    
+        // Mettre le résultat à 1 si l'expression était fausse
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1)); // Mettre le résultat à vrai (1)
+    
+        // Continuer l'exécution après la négation
+        program.addInstruction(new Label(continueLabel));
+    
         return program;
     }
+    
 
     @Override
     public Program visitComparison(grammarTCLParser.ComparisonContext ctx) {
@@ -135,65 +146,63 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitOr(grammarTCLParser.OrContext ctx) {
-        System.out.println("visitOr");
         Program program = new Program();
+        
+        // Évaluer la première expression de l'opération OR
+        Program leftProgram = visit(ctx.expr(0));
+        program.addInstructions(leftProgram);
+        int leftReg = registerCounter - 1; // Le registre contenant le résultat de la première expression
+        
+        // Évaluer la seconde expression de l'opération OR
+        Program rightProgram = visit(ctx.expr(1));
+        program.addInstructions(rightProgram);
+        int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
 
-        // Récupère le code généré pour les deux expressions à comparer
-        Program leftExprProgram = visit(ctx.expr(0));
-        Program rightExprProgram = visit(ctx.expr(1));
+        // Utiliser un nouveau registre pour le résultat de l'opération OR
+        int resultReg = getNewRegister();
+        
+        // Initialiser le registre de résultat à 0 (faux)
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
 
-        // Génère le code assembleur pour l'opération logique "||"
-        int destRegister = getNewRegister();
-        program.addInstructions(leftExprProgram);
+        // Créer des étiquettes pour la logique de l'opération OR
+        String trueLabel = generateNewLabel();
+        String continueLabel = generateNewLabel();
 
-        // Sauter à l'étiquette TrueLabel si l'opérande de gauche est vrai
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister));
-        program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JNEQ, destRegister, 0, "TrueLabel"));
+        // Si l'une des expressions est vraie, sauter à trueLabel
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, leftReg, 0, trueLabel));
+        program.addInstruction(new CondJump(CondJump.Op.JNEQ, rightReg, 0, trueLabel));
 
-        // Si l'opérande de gauche est faux, évaluez l'opérande de droite
-        program.addInstructions(rightExprProgram);
-        program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
+        // Si les deux expressions sont fausses, on saute à continueLabel, le résultat reste faux
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
 
-        // TrueLabel, l'opérande de gauche est vrai
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister));
+        // Si l'une des expressions est vraie, on met le résultat à 1 (vrai)
+        program.addInstruction(new Label(trueLabel));
+        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1));
 
-        // Effectuer l'opération logique OR
-        program.addInstruction(new UAL("OR", UAL.Op.OR, destRegister, destRegister, 1));
-
-        // Poussez le résultat de l'opération OR sur la pile
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
+        // Continuer l'exécution après l'opération OR
+        program.addInstruction(new Label(continueLabel));
 
         return program;
     }
  
     @Override
     public Program visitOpposite(grammarTCLParser.OppositeContext ctx) {
-        System.out.println("visitOpposite");
         Program program = new Program();
-
-        // Récupère le code généré pour l'expression à nier
+        
+        // Évaluer l'expression dont on doit inverser le signe
         Program exprProgram = visit(ctx.expr());
-
-        // Génère le code assembleur pour l'opération logique "!"
-        int destRegister = getNewRegister();
         program.addInstructions(exprProgram);
-
-        // Sauter à l'étiquette TrueLabel si l'opérande est faux
-        program.addInstruction(new IO("POP", IO.Op.OUT, destRegister));
-        program.addInstruction(new CondJump("TrueLabel", CondJump.Op.JZ, destRegister, 0, "TrueLabel"));
-
-        // Si l'opérande est vrai, pousser faux sur la pile
-        program.addInstruction(new JumpCall("FalseLabel", JumpCall.Op.JMP, "FalseLabel"));
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
-        // Si l'opérande est faux, pousser vrai sur la pile
-        program.addInstruction(new JumpCall("TrueLabel", JumpCall.Op.JMP, "TrueLabel"));
-        program.addInstruction(new IO("PUSH", IO.Op.OUT, destRegister));
-
-        // Fin de la négation
-        program.addInstruction(new JumpCall("EndLabel", JumpCall.Op.JMP, "EndLabel"));
-
+        int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
+    
+        // Utiliser un nouveau registre pour le résultat de l'opération d'opposition
+        int resultReg = getNewRegister();
+    
+        // Initialiser le registre de résultat à 0 (pour préparer l'opération de soustraction)
+        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
+    
+        // Inverser le signe de l'expression en soustrayant sa valeur de 0
+        program.addInstruction(new UAL(UAL.Op.SUB, resultReg, resultReg, exprReg)); // Résultat = 0 - exprReg
+    
         return program;
     }
 
