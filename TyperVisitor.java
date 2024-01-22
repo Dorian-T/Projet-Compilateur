@@ -139,7 +139,9 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         if(visit(ctx.getChild(0)) instanceof UnknownType){ //si le type est auto, on met un UnknownType
             this.types.put(new UnknownType(ctx.getChild(1)),new UnknownType(ctx.getChild(1)));
-        }else{  //sinon on met le type
+        }else if(visit(ctx.getChild(0)).contains(new UnknownType())){
+
+        }  //sinon on met le type
             this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)));
         }
         
@@ -214,9 +216,9 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
             result = returnType.unify(visit(ctx.getChild(i)));
             if(result != null && result.containsKey(returnType)){
+                //TODO
                 returnType = result.get(returnType);
             }
-            join(result);
         }
 
         return returnType; //Retroune les types de retour
@@ -224,7 +226,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
-        
+        //TODO
         System.out.println("visit Decl_fct : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
 
         ArrayList<Type> args = new ArrayList<Type>();
@@ -239,7 +241,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         Type type_retour = visit(ctx.getChild(ctx.getChildCount()-1)); // on visite ensuite le bloc de la fonction
         Type type_retour_fonction = ((FunctionType)this.types.get(new UnknownType(ctx.getChild(1)))).getReturnType();
-        join(type_retour_fonction.unify(type_retour));
+        type_retour_fonction.unify(type_retour); //TODO
 
         return null; //on ne retourne rien
     }
@@ -250,7 +252,6 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         types = new HashMap<UnknownType,Type>();
 
         this.types.put(new UnknownType(ctx.getChild(ctx.getChildCount()-3)), new Primitive_Type(Type.Base.INT));
-        
         
         
         Type typeretour = this.visitChildren(ctx); // on visite les fils et on recupere le type de retour
@@ -266,15 +267,6 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return null;
     }
 
-    public void join(Map<UnknownType,Type> h){
-        if(h == null){
-            return;
-        }
-        for (UnknownType key : h.keySet()){
-            this.types.remove(key);
-            this.types.put(key, h.get(key));
-        }
-    }
 
 
 
@@ -282,9 +274,15 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
 
 
-
-
-
+    // public void join(Map<UnknownType,Type> h){
+    //     if(h == null){
+    //         return;
+    //     }
+    //     for (UnknownType key : h.keySet()){
+    //         this.types.remove(key);
+    //         this.types.put(key, h.get(key));
+    //     }
+    // }
 
     // public Type Join(Type t1, Type t2){
     //     if(t1.equals(t2)){

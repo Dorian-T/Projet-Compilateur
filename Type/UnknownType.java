@@ -105,7 +105,7 @@ public class UnknownType extends Type {
 
     @Override
     public boolean contains(UnknownType v) {
-        return this.equals(v) && !this.varName.equals("#");
+        return this.equals(v);
     }
 
     /**
