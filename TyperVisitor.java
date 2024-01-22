@@ -143,12 +143,13 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         }  //sinon on met le type
             this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)));
-        }
+        
         
         if(ctx.getChildCount() > 3){ //declaration avec initialisation
             System.out.println(" - initialisation ");
 
-            join(this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3))));
+            this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3)));
+            //TODO
         }
         return null;
     }
@@ -166,7 +167,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         System.out.println(" - variable : " + ctx.getChild(0));
         if(this.types.containsKey(new UnknownType(ctx.getChild(0)))){
             //verifie si le type de la variable est le meme que celui de l'expression
-            join(this.types.get(new UnknownType(ctx.getChild(0))).unify(visit(ctx.getChild(2))));
+            this.types.get(new UnknownType(ctx.getChild(0))).unify(visit(ctx.getChild(2)));
+            //TODO
         }else{
             throw new UnsupportedOperationException("Variable non déclarée");
         }
@@ -214,7 +216,9 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         for(int i = 1; i < ctx.getChildCount() - 4; i++){
 
-            result = returnType.unify(visit(ctx.getChild(i)));
+            returnType.unify(visit(ctx.getChild(i)));
+            
+            
             if(result != null && result.containsKey(returnType)){
                 //TODO
                 returnType = result.get(returnType);
@@ -249,11 +253,11 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     @Override
     public Type visitMain(grammarTCLParser.MainContext ctx) {
         System.out.println("========{visit main}========");
+        
         types = new HashMap<UnknownType,Type>();
 
         this.types.put(new UnknownType(ctx.getChild(ctx.getChildCount()-3)), new Primitive_Type(Type.Base.INT));
-        
-        
+
         Type typeretour = this.visitChildren(ctx); // on visite les fils et on recupere le type de retour
 
         if(typeretour != null){
@@ -262,6 +266,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
                 throw new UnsupportedOperationException("Le type de retour de la fonction main n'est pas entier");
             }
         }
+
         System.out.println("========{fin visit main}========");
 
         return null;

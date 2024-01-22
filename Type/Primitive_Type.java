@@ -37,14 +37,13 @@ public class Primitive_Type extends Type {
             resultat.put((UnknownType) t, this);
             return resultat;
         }else{
-            throw new Error("Unification error");
+            throw new RuntimeException("Unification error");
         }
     }
 
     @Override
     public Type substitute(UnknownType v, Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'substitute'");
+        throw new RuntimeException("IMPOSSIBLE : Primitive_Type.substitute");
     }
 
     @Override

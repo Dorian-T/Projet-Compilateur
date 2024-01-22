@@ -24,26 +24,19 @@ public class ArrayType extends Type{
     @Override
     public Map<UnknownType, Type> unify(Type t) {
         Map<UnknownType,Type> resultat = new HashMap<UnknownType,Type>();
-        if(this.equals(t) || t == null){
+        
+        if(this.equals(t) || t == null) 
             return null;
-        }else if(t instanceof UnknownType){
+        
+        if(t instanceof UnknownType){
             resultat.put((UnknownType) t, this);
             return resultat;
-        }else if(t instanceof ArrayType){
-            resultat = this.getTabType().unify(((ArrayType) t).getTabType()); //TODO : vérifier que ça marche (ca marche pas)
-            
-            throw new Error("Uniplemented method unify for ArrayType and ArrayType");
-            // if (resultat.isEmpty()) {
-            //     return null;
-            // }else if(resultat.containsKey(this.getTabType())){
-                
-                
-            // }
-            
-            
-        }else{
-            throw new Error("Unification error");
         }
+
+        if(t instanceof ArrayType)
+            return this.getTabType().unify(((ArrayType) t).getTabType());
+        
+        throw new RuntimeException("Unification error : ArrayType");
     }
 
     @Override
@@ -53,8 +46,7 @@ public class ArrayType extends Type{
 
     @Override
     public Type substitute(UnknownType v, Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'substitute'");
+        return new ArrayType(this.tabType.substitute(v, t));
     }
 
     @Override
@@ -69,6 +61,6 @@ public class ArrayType extends Type{
      */
     @Override
     public String toString() {
-        return "array(" + tabType.toString() + ")";
+        return tabType.toString() + "[]";
     }
 }
