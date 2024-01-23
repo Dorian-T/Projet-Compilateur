@@ -78,12 +78,14 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitVariable(grammarTCLParser.VariableContext ctx) {
-        System.out.println("visit variable : " + ctx.getChild(0).getText());
-        if(this.types.containsKey(new UnknownType(ctx))){ //on verifie si la variable existe deja dans le this.types
+        System.out.println("   - visit variable : " + ctx.getChild(0).getText());
+
+        //on verifie si la variable existe deja dans le this.types
+        if(this.types.containsKey(new UnknownType(ctx)))
             return this.types.get(new UnknownType(ctx));
-        }else{
+        else
             throw new UnsupportedOperationException("Variable non déclarée");
-        }
+
     }
 
     @Override
@@ -132,25 +134,27 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
-        System.out.println("visit declaration : " );
-        if(this.types.containsKey(new UnknownType(ctx.getChild(1)))){ //on verifie si la variable existe deja dans le this.types
+        System.out.println(" - declaration " );
+        
+        //on verifie si la variable existe deja dans le this.types
+        if(this.types.containsKey(new UnknownType(ctx.getChild(1)))) 
             throw new UnsupportedOperationException("Variable déjà déclarée");
-        }
-
-        if(visit(ctx.getChild(0)) instanceof UnknownType){ //si le type est auto, on met un UnknownType
-            this.types.put(new UnknownType(ctx.getChild(1)),new UnknownType(ctx.getChild(1)));
-        }else if(visit(ctx.getChild(0)).contains(new UnknownType())){
-
-        }  //sinon on met le type
+        
+        
+        if(!containsVar(visit(ctx.getChild(0))))
+            //si le type n'est pas auto, et ne contient aucun auto (tab de auto...)
             this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)));
+        else
+            //sinon on prend le type et on remplace les auto par des #[nom de la variable].
+            this.types.put(new UnknownType(ctx.getChild(1)), visit(ctx.getChild(0)).substitute(new UnknownType(), new UnknownType("#" + ctx.getChild(1).getText())));
         
-        
-        if(ctx.getChildCount() > 3){ //declaration avec initialisation
+        //declaration avec initialisation ?
+        if(ctx.getChildCount() > 3){ 
             System.out.println(" - initialisation ");
-
-            this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3)));
-            //TODO
+            addInTypesMap(this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3))));
         }
+
+        //aucun retrun possible.
         return null;
     }
 
@@ -162,16 +166,10 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitAssignment(grammarTCLParser.AssignmentContext ctx) {
-        System.out.println("visit assignment : " );
-        //verifie si la variable existe deja dans le this.types
-        System.out.println(" - variable : " + ctx.getChild(0));
-        if(this.types.containsKey(new UnknownType(ctx.getChild(0)))){
-            //verifie si le type de la variable est le meme que celui de l'expression
-            this.types.get(new UnknownType(ctx.getChild(0))).unify(visit(ctx.getChild(2)));
-            //TODO
-        }else{
-            throw new UnsupportedOperationException("Variable non déclarée");
-        }
+        System.out.println(" - visit assignment " );
+
+        //on unifie et on ajoute dans this.types si necessaire grace a addInTypesMap !
+        addInTypesMap(this.types.get(new UnknownType(ctx.getChild(0).getText())).unify(visit(ctx.getChild(2))));
         return null;
     }
 
@@ -271,9 +269,13 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return null;
     }
 
-
     //appelle clasique de cette fonction : returnType = this.addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
     public Type addInTypesMap(Map<UnknownType,Type> modifMap, Type returnType){
+        
+        if (modifMap == null) // s il n'y a pas eu de changement
+            return returnType;
+
+        System.out.println(" - addInTypesMap : " + modifMap );
         
         this.types.putAll(modifMap);
         
@@ -293,7 +295,11 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         }
         System.out.println(" - returnType de addInTypesMap : " + returnType);
         return returnType;
-        // TODO : suprime si plus utilisé les var de fin de tableau (ex : #a , #variable ... )
+        // TODO : suprime si plus utilisé les var de fin de tableau (ex : #a , #variable ... ) on le fera probablement a la fin de la visite de la fonction main
+    }
+
+    public void addInTypesMap(Map<UnknownType,Type> modifMap){
+        addInTypesMap(modifMap, null);
     }
 
     public boolean containsVar(Type t){

@@ -25,6 +25,16 @@ public class UnknownType extends Type {
      * Constructeur à partir d'un nom de variable et un numéro
      * 
      * @param s nom de variable
+     */
+    public UnknownType(String s) {
+        this.varIndex = newVariableCounter++;
+        this.varName = s;
+    }
+
+    /**
+     * Constructeur à partir d'un nom de variable et un numéro
+     * 
+     * @param s nom de variable
      * @param n numéro de la variable
      */
     public UnknownType(String s, int n) {
