@@ -37,7 +37,7 @@ public class Primitive_Type extends Type {
             resultat.put((UnknownType) t, this);
             return resultat;
         }else{
-            throw new RuntimeException("Unification error");
+            throw new RuntimeException("Unification error : Primitive_Type.unify between " + this + " and " + t);
         }
     }
 

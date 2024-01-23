@@ -207,30 +207,22 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
-
+        System.out.println("visit core_fct : " );
         // il faut verifier que le type de retour est le meme que celui de l'expression
         // il faut retourner le type de l'unification des types des return...
 
         Type returnType = visit(ctx.getChild(ctx.getChildCount() - 3));
-        Map<UnknownType, Type> result = new HashMap<UnknownType, Type>();
 
         for(int i = 1; i < ctx.getChildCount() - 4; i++){
 
-            returnType.unify(visit(ctx.getChild(i)));
-            
-            
-            if(result != null && result.containsKey(returnType)){
-                //TODO
-                returnType = result.get(returnType);
-            }
+            returnType = addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
         }
-
         return returnType; //Retroune les types de retour
     }
 
     @Override
     public Type visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
-        //TODO
+        //TODO : FCT
         System.out.println("visit Decl_fct : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
 
         ArrayList<Type> args = new ArrayList<Type>();
@@ -245,7 +237,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         Type type_retour = visit(ctx.getChild(ctx.getChildCount()-1)); // on visite ensuite le bloc de la fonction
         Type type_retour_fonction = ((FunctionType)this.types.get(new UnknownType(ctx.getChild(1)))).getReturnType();
-        type_retour_fonction.unify(type_retour); //TODO
+        type_retour_fonction.unify(type_retour); 
+        //TODO
 
         return null; //on ne retourne rien
     }
@@ -257,14 +250,20 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         types = new HashMap<UnknownType,Type>();
 
         this.types.put(new UnknownType(ctx.getChild(ctx.getChildCount()-3)), new Primitive_Type(Type.Base.INT));
+        
+        // on visite les fils (les fonctions)
+        for(int i = 0; i < ctx.getChildCount() - 3; i++){
+            visit(ctx.getChild(i));
+        }
 
-        Type typeretour = this.visitChildren(ctx); // on visite les fils et on recupere le type de retour
+        // on visite le bloc de la fonction main
+        Type typeretour = this.visit(ctx.getChild(ctx.getChildCount()-2)); 
 
-        if(typeretour != null){
-            System.out.println(" - type de retour : " + typeretour);
-            if(typeretour.equals(new Primitive_Type(Type.Base.INT))){
-                throw new UnsupportedOperationException("Le type de retour de la fonction main n'est pas entier");
-            }
+        if(typeretour == null)
+            throw new UnsupportedOperationException("La fonction main ne retourne rien");
+
+        if(!typeretour.equals(new Primitive_Type(Type.Base.INT))){
+            throw new UnsupportedOperationException("Le type de retour de la fonction main n'est pas entier");
         }
 
         System.out.println("========{fin visit main}========");
@@ -273,11 +272,37 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     }
 
 
+    //appelle clasique de cette fonction : returnType = this.addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
+    public Type addInTypesMap(Map<UnknownType,Type> modifMap, Type returnType){
+        
+        this.types.putAll(modifMap);
+        
+        //TODO : verifier qu'il n'y a pas une boucle infinie
+        //on verifie si returnType contien une variable et si il y a eu des changements
+        while ( containsVar(returnType) && !(returnType.equals(returnType.substituteAll(this.types))) ){ 
+            
+            //on fait les substitutions
+            returnType = returnType.substituteAll(this.types);
+        }
 
+        //on fait les substitutions dans this.types
+        for(UnknownType key : this.types.keySet()){
+            if(containsVar(this.types.get(key)) && !(this.types.get(key).equals( this.types.get(key).substituteAll(this.types) )) ){
+                this.types.put(key, this.types.get(key).substituteAll(this.types));
+            }
+        }
+        System.out.println(" - returnType de addInTypesMap : " + returnType);
+        return returnType;
+        // TODO : suprime si plus utilisé les var de fin de tableau (ex : #a , #variable ... )
+    }
 
-
-
-
+    public boolean containsVar(Type t){
+        if(t instanceof UnknownType)
+            return true;
+        if(t instanceof ArrayType)
+            return containsVar(((ArrayType)t).getTabType());
+        return false;
+    }
 
     // public void join(Map<UnknownType,Type> h){
     //     if(h == null){
