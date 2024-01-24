@@ -183,8 +183,26 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitIf(grammarTCLParser.IfContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitIf'");
+        System.out.println("visit if" );
+
+        // Verification que les deux éléments du test sont du meme type
+        if (!visit(ctx.getChild(2).getChild(0)).equals(visit(ctx.getChild(2).getChild(2)))) {
+            throw new UnsupportedOperationException("Les deux éléments du test ne sont pas du meme type");
+        }
+
+        Type blocIf = visit(ctx.getChild(4));
+        Type blocElse = null;
+        if(ctx.getChildCount() > 5) // il y a un else
+            blocElse = visit(ctx.getChild(6));
+
+        if(blocIf == null && blocElse == null)
+            return null;
+        else if(blocIf != null && blocElse == null)
+            return blocIf;
+        else if(blocIf == null)
+            return blocElse;
+        else
+            return addInTypesMap(blocIf.unify(blocElse), blocIf);
     }
 
     @Override
