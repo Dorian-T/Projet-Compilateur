@@ -185,11 +185,10 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     public Type visitIf(grammarTCLParser.IfContext ctx) {
         System.out.println("visit if" );
 
-        // Verification que les deux éléments du test sont du meme type
-        if (!visit(ctx.getChild(2).getChild(0)).equals(visit(ctx.getChild(2).getChild(2)))) {
-            throw new UnsupportedOperationException("Les deux éléments du test ne sont pas du meme type");
-        }
+        // condition
+        visit(ctx.getChild(2));
 
+        // bloc
         Type blocIf = visit(ctx.getChild(4));
         Type blocElse = null;
         if(ctx.getChildCount() > 5) // il y a un else
