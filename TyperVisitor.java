@@ -20,26 +20,45 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitNegation(grammarTCLParser.NegationContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitNegation'");
+        visitChildren(ctx);
+        return new Primitive_Type(Type.Base.BOOL);
     }
 
     @Override
     public Type visitComparison(grammarTCLParser.ComparisonContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitComparison'");
+        
+        Type var1 = visit(ctx.getChild(0));
+        if(var1 instanceof UnknownType)
+            var1 = addInTypesMap(((UnknownType)var1).unify(new Primitive_Type(Type.Base.INT)),var1);
+
+        Type var2 = visit(ctx.getChild(2));
+        if(var2 instanceof UnknownType)
+            var2 = addInTypesMap(((UnknownType)var2).unify(new Primitive_Type(Type.Base.INT)),var2);
+
+        //les deux types doivent etre des entiers(les UnknownType ont été remplacés par des entiers)
+        if(!(var1.equals(new Primitive_Type(Type.Base.INT)) && var2.equals(new Primitive_Type(Type.Base.INT))))
+            throw new UnsupportedOperationException("Les types comparés ( " + ctx.getChild(1).getText() + " ) ne sont pas des entiers");
+        
+        return new Primitive_Type(Type.Base.BOOL);
     }
 
     @Override
     public Type visitOr(grammarTCLParser.OrContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitOr'");
+        visitChildren(ctx);
+        return new Primitive_Type(Type.Base.BOOL);
     }
 
     @Override
     public Type visitOpposite(grammarTCLParser.OppositeContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitOpposite'");
+        Type var1 = visit(ctx.getChild(1));
+        if(var1 instanceof UnknownType)
+            var1 = addInTypesMap(((UnknownType)var1).unify(new Primitive_Type(Type.Base.INT)),var1);
+
+        //le type doit etre un entier(les UnknownType ont été remplacés par des entiers)
+        if(!(var1.equals(new Primitive_Type(Type.Base.INT))))
+            throw new UnsupportedOperationException("type opposé ( " + ctx.getChild(1).getText() + " ) pas un entier");
+
+        return null;
     }
 
     @Override
@@ -49,19 +68,20 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitTab_access(grammarTCLParser.Tab_accessContext ctx) {
-        // TODO Auto-generated method stub
+        // TODO:tableau
         throw new UnsupportedOperationException("Unimplemented method 'visitTab_access'");
     }
 
     @Override
     public Type visitBrackets(grammarTCLParser.BracketsContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitBrackets'");
+        return visit(ctx.getChild(1));
     }
 
     @Override
     public Type visitCall(grammarTCLParser.CallContext ctx) {
-        // TODO Auto-generated method stub
+        System.out.println(" - visit call : " + ctx.getChild(0).getText());
+
+        // TODO:fonction
         throw new UnsupportedOperationException("Unimplemented method 'visitCall'");
     }
 
@@ -72,8 +92,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitAnd(grammarTCLParser.AndContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitAnd'");
+        visitChildren(ctx);
+        return new Primitive_Type(Type.Base.BOOL);
     }
 
     @Override
@@ -90,14 +110,26 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitMultiplication(grammarTCLParser.MultiplicationContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitMultiplication'");
+        Type var1 = visit(ctx.getChild(0));
+        if(var1 instanceof UnknownType)
+            var1 = addInTypesMap(((UnknownType)var1).unify(new Primitive_Type(Type.Base.INT)),var1);
+        
+        Type var2 = visit(ctx.getChild(2));
+        if(var2 instanceof UnknownType)
+            var2 = addInTypesMap(((UnknownType)var2).unify(new Primitive_Type(Type.Base.INT)),var2);
+
+        //les deux types doivent etre des entiers(les UnknownType ont été remplacés par des entiers)
+        if(!(var1.equals(new Primitive_Type(Type.Base.BOOL)) && var2.equals(new Primitive_Type(Type.Base.BOOL))))
+            throw new UnsupportedOperationException("Les types multipliés ( " + ctx.getChild(1).getText() + " ) ne sont pas des entiers");
+    
+        return new Primitive_Type(Type.Base.INT);
     }
 
     @Override
     public Type visitEquality(grammarTCLParser.EqualityContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitEquality'");
+       
+        addInTypesMap(visit(ctx.getChild(0)).unify(visit(ctx.getChild(2))));
+        return new Primitive_Type(Type.Base.BOOL);
     }
 
     @Override
@@ -108,8 +140,19 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitAddition(grammarTCLParser.AdditionContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitAddition'");
+        Type var1 = visit(ctx.getChild(0));
+        if(var1 instanceof UnknownType)
+            var1 = addInTypesMap(((UnknownType)var1).unify(new Primitive_Type(Type.Base.INT)),var1);
+        
+        Type var2 = visit(ctx.getChild(2));
+        if(var2 instanceof UnknownType)
+            var2 = addInTypesMap(((UnknownType)var2).unify(new Primitive_Type(Type.Base.INT)),var2);
+
+        //les deux types doivent etre des entiers(les UnknownType ont été remplacés par des entiers)
+        if(!(var1.equals(new Primitive_Type(Type.Base.INT)) && var2.equals(new Primitive_Type(Type.Base.INT))))
+            throw new UnsupportedOperationException("Les types Addition ( " + ctx.getChild(1).getText() + " ) ne sont pas des entiers");
+    
+        return new Primitive_Type(Type.Base.INT);
     }
 
     @Override
@@ -134,7 +177,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
-        System.out.println(" - declaration " );
+        System.out.println(" - visit declaration " );
         
         //on verifie si la variable existe deja dans le this.types
         if(this.types.containsKey(new UnknownType(ctx.getChild(1)))) 
@@ -150,7 +193,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         
         //declaration avec initialisation ?
         if(ctx.getChildCount() > 3){ 
-            System.out.println(" - initialisation ");
+            System.out.println("   + initialisation ");
             addInTypesMap(this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3))));
         }
 
@@ -160,8 +203,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitPrint(grammarTCLParser.PrintContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitPrint'");
+        visitChildren(ctx);
+        return null;
     }
 
     @Override
@@ -175,8 +218,17 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitBlock(grammarTCLParser.BlockContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitBlock'");
+        System.out.println(" - visit block : " );
+        Type typeretour = visit(ctx.getChild(1));
+        for(int i = 2; i < ctx.getChildCount() - 1; i++){
+            System.out.println("   + visit block : " + i );
+            if(typeretour != null)
+                typeretour = addInTypesMap(typeretour.unify(typeretour), visit(ctx.getChild(i)));
+            else
+                typeretour = visit(ctx.getChild(i));
+        }
+        System.out.println(" + fin visit block : " + typeretour);
+        return typeretour;
     }
 
     @Override
@@ -187,14 +239,21 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitWhile(grammarTCLParser.WhileContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitWhile'");
+        System.out.println(" - visit while" );
+
+        //on visite la condition
+        visit(ctx.getChild(2));
+
+        //on visite le bloc et on retourne le type de retour
+        return visit(ctx.getChild(4));
     }
 
     @Override
     public Type visitFor(grammarTCLParser.ForContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitFor'");
+        visit(ctx.getChild(2));
+        visit(ctx.getChild(4));
+        visit(ctx.getChild(6));
+        return visit(ctx.getChild(8));
     }
 
     @Override
@@ -220,7 +279,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
-        //TODO : FCT
+        
+        //TODO:fonction
         System.out.println("visit Decl_fct : " + ctx.getChild(0).getText() + " " + ctx.getChild(1).getText());
 
         ArrayList<Type> args = new ArrayList<Type>();
@@ -236,7 +296,6 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         Type type_retour = visit(ctx.getChild(ctx.getChildCount()-1)); // on visite ensuite le bloc de la fonction
         Type type_retour_fonction = ((FunctionType)this.types.get(new UnknownType(ctx.getChild(1)))).getReturnType();
         type_retour_fonction.unify(type_retour); 
-        //TODO
 
         return null; //on ne retourne rien
     }
@@ -275,7 +334,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         if (modifMap == null) // s il n'y a pas eu de changement
             return returnType;
 
-        System.out.println(" - addInTypesMap : " + modifMap );
+        //System.out.println(" - addInTypesMap : " + modifMap );
         
         this.types.putAll(modifMap);
         
@@ -293,7 +352,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
                 this.types.put(key, this.types.get(key).substituteAll(this.types));
             }
         }
-        System.out.println(" - returnType de addInTypesMap : " + returnType);
+        //System.out.println(" - returnType de addInTypesMap : " + returnType);
         return returnType;
         // TODO : suprime si plus utilisé les var de fin de tableau (ex : #a , #variable ... ) on le fera probablement a la fin de la visite de la fonction main
     }
@@ -325,7 +384,6 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     //         return t1;
     //     }
     //     else if(t1 instanceof UnknownType && t2 instanceof UnknownType){
-    //         /// TODO : retenir que les deux types sont les memes... je sais pas comment...
     //         return t1;
     //     }
     //     else if(t1 instanceof UnknownType){
@@ -351,7 +409,6 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     //         return t1;
     //     }
     //     else if(t1.getTabType() instanceof UnknownType && t2.getTabType() instanceof UnknownType){
-    //         /// TODO : retenir que les deux types sont les memes... je sais pas comment...
     //         return t1;
     //     }
     //     else if(t1.getTabType() instanceof UnknownType){
