@@ -61,6 +61,6 @@ public class ArrayType extends Type{
      */
     @Override
     public String toString() {
-        return tabType.toString() + "[]";
+        return "[]" + tabType.toString();
     }
 }
