@@ -1,4 +1,8 @@
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.ArrayList;
+
 
 import javax.sound.sampled.Control;
 
@@ -78,30 +82,18 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program exprProgram = visit(ctx.expr());
         program.addInstructions(exprProgram);
         int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
-    
-        // Utiliser un nouveau registre pour le résultat de la négation
-        int resultReg = getNewRegister();
-    
-        // Initialiser le registre de résultat à 0
-        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
-    
+
         // Créer une étiquette pour le cas où l'expression est fausse (et donc la négation vraie)
         String trueLabel = generateNewLabel();
-        // Créer une étiquette pour la suite du code après la négation
-        String continueLabel = generateNewLabel();
     
         // Si l'expression est fausse (0), sauter à trueLabel pour mettre le résultat à 1
         program.addInstruction(new CondJump(CondJump.Op.JEQU, exprReg, 0, trueLabel));
     
-        // Si l'expression est vraie (non 0), le résultat reste 0 (faux) et on saute à continueLabel
-        program.addInstruction(new JumpCall(JumpCall.Op.JMP, continueLabel));
-    
-        // Mettre le résultat à 1 si l'expression était fausse
-        program.addInstruction(new Label(trueLabel));
-        program.addInstruction(new UALi(UALi.Op.ADD, resultReg, 0, 1)); // Mettre le résultat à vrai (1)
-    
-        // Continuer l'exécution après la négation
-        program.addInstruction(new Label(continueLabel));
+        // Si l'expression est vraie (pas 0),  préparer le registre de résultat pour qu'il passe à 0 (faux)
+        program.addInstruction(new UALi(UALi.Op.SUB, exprReg, 0, 1));
+
+        // Si l'expression est vraie (1)
+        program.addInstruction(new UALi(trueLabel,UALi.Op.ADD,exprReg,exprReg,1)); // Mettre le résultat à 1 - resultReg
     
         return program;
     }
@@ -206,11 +198,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Utiliser un nouveau registre pour le résultat de l'opération d'opposition
         int resultReg = getNewRegister();
     
-        // Initialiser le registre de résultat à 0 (pour préparer l'opération de soustraction)
-        program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
-    
         // Inverser le signe de l'expression en soustrayant sa valeur de 0
-        program.addInstruction(new UAL(UAL.Op.SUB, resultReg, resultReg, exprReg)); // Résultat = 0 - exprReg
+        program.addInstruction(new UAL(UAL.Op.SUB, resultReg, 0, exprReg)); // Résultat = 0 - exprReg
+        //on a 0 dans le registre 0
     
         return program;
     }
@@ -252,14 +242,27 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitCall");
         Program program = new Program();
     
+
+        for (int i = 0; i < ctx.expr().size(); i++) {
+            // Visite chaque argument de la fonction
+            System.out.println("\t" + ctx.expr(i).getText());
+            Program argProgram = visit(ctx.expr(i));
+            program.addInstructions(argProgram);
+            //on les empiles, après avoir augmenté le stack pointer
+            program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1));
+            program.addInstruction(new Mem(Mem.Op.ST, registerCounter - 1, 2));
+        }   
+
         // Récupère le nom de la fonction depuis le contexte
         String functionName = ctx.VAR().getText();
         //on ajoute un Call
         program.addInstruction(new JumpCall(JumpCall.Op.CALL, functionName));
-        //on récupère le retour de la fonction
-        int destReg = getNewRegister();
-        //on récupère dans la table des registres de retour des fonctions la valeur de retour
-        program.addInstruction(new UALi(UALi.Op.ADD, destReg, retFunctionTable.get(functionName),0));
+
+        //on récupère le résultat de la fonction
+        int newReg = getNewRegister();
+        program.addInstruction(new UAL(UAL.Op.XOR, newReg, newReg, newReg));
+        program.addInstruction(new Mem(Mem.Op.LD, newReg, 2));
+        program.addInstruction(new UALi(UALi.Op.SUB, 2,2,1));
 
         return program;
     }
@@ -338,8 +341,17 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         int destRegister = getNewRegister();
         program.addInstructions(leftExprProgram);
         program.addInstructions(rightExprProgram);
-        program.addInstruction(new UAL(UAL.Op.MUL, destRegister,sr1,sr2)); // Multiplication
-
+        switch(ctx.getChild(1).getText()) {
+            case "*":
+                program.addInstruction(new UAL(UAL.Op.MUL, destRegister, sr1, sr2)); // Multiplication
+                break;
+            case "/":
+                program.addInstruction(new UAL(UAL.Op.DIV, destRegister, sr1, sr2)); // Division
+                break;
+            case "%":
+                program.addInstruction(new UAL(UAL.Op.MOD, destRegister, sr1, sr2)); // Modulo
+                break;
+        }
         return program;
     }
 
@@ -359,13 +371,26 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         
         // Génère le code assembleur pour l'opération d'égalité
         int destRegister = getNewRegister();
-        program.addInstruction(new UAL(UAL.Op.SUB, destRegister, sr1, sr2)); // sr1 - sr2
         Label trueLabel = new Label(generateNewLabel());
+        //on met 0 dans le registre de destination
+        program.addInstruction(new UAL(UAL.Op.XOR, destRegister, 0, 0));
 
-        //si rslt = 0, les 2 sont égales, donc on laisse comme ça
-        program.addInstruction(new CondJump(CondJump.Op.JEQU, destRegister, 0, trueLabel.getLabel())); // Sauter à TrueLabel si les deux valeurs sont égales
-        // Si les deux valeurs ne sont pas égales, on passe à 1 
+        switch (ctx.getChild(1).getText()) {
+            case "==":                
+                // Sauter à TrueLabel si les deux valeurs sont égales
+                program.addInstruction(new CondJump(CondJump.Op.JEQU, sr1, sr2, trueLabel.getLabel())); 
+                break;
+            case "!=":
+                // Sauter à TrueLabel si les deux valeurs sont inégales
+                program.addInstruction(new CondJump(CondJump.Op.JNEQ, sr1, sr2, trueLabel.getLabel())); 
+                break;
+            default:
+                break;
+        }
+
+        //si le rslt est faux, on met 1 dans le registre de destination
         program.addInstruction(new UALi(UALi.Op.ADD, destRegister, 0, 1));
+
         //Enfin, on inverse le résultat, donc 1 si c'est bon, 0 sinon : op : 1 - destRegister[=0 ou 1]
         program.addInstruction(new UAL(trueLabel.getLabel(),UAL.Op.SUB, destRegister, 1, destRegister));
         return program;
@@ -395,7 +420,16 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         // Génère le code pour l'opération d'addition
         int destRegister = getNewRegister();
-        program.addInstruction(new UAL(UAL.Op.ADD, destRegister, sr1, sr2)); // Addition
+        switch(ctx.getChild(1).getText()) {
+            case "+":
+                program.addInstruction(new UAL(UAL.Op.ADD, destRegister, sr1, sr2)); // Addition
+                break;
+            case "-":
+                program.addInstruction(new UAL(UAL.Op.SUB, destRegister, sr1, sr2)); // Soustraction
+                break;
+            default:
+                break;
+        }
 
         return program;
     }
@@ -469,8 +503,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Ajoute les instructions générées pour l'expression à droite de l'opérateur d'assignation
         program.addInstructions(expressionProgram);
         // Ajoute une instruction pour stocker la valeur dans la variable
-        
         int sr1 = registerCounter - 1;
+        //sr1 est donc le registre contenant le résultat de l'expression
         int regvar = getVariableAddress(ctx.VAR().getText());
 
         program.addInstruction(new UALi(UALi.Op.ADD, regvar, sr1, 0));
@@ -501,30 +535,43 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Génère le code pour l'expression conditionnelle
         Program conditionProgram = visit(ctx.expr());
         program.addInstructions(conditionProgram);
-        // Ajoute une étiquette pour le saut conditionnel
-        String trueLabel = generateNewLabel();
-        //si la condition est != 0 donc true
-        program.addInstruction(new CondJump(CondJump.Op.JNEQ, registerCounter - 1, 0, trueLabel));
-        
-        
-        //on fait un jump à la fin du if
-        String endLabel = generateNewLabel();
-        // Si un bloc else existe, génère le code pour le bloc else
+
+        String Label1;
         if (ctx.instr().size() > 1) {
-            Program falseBlockProgram = visit(ctx.instr(1)); 
-            program.addInstructions(falseBlockProgram);
-        
-            program.addInstruction(new JumpCall(JumpCall.Op.JMP, endLabel));
+            Label1 = generateNewLabel("Else_");
         }
+        else {
+            Label1 = generateNewLabel("EndIf_");
+        }
+
+        //si la condition est != 0 donc false
+        program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, Label1));
         
-        
-        // on place le true label ; code si la condition est vraie
-        program.addInstruction(new Label(trueLabel));
+        //cas vrai
         Program trueBlockProgram = visit(ctx.instr(0));
         program.addInstructions(trueBlockProgram);
 
+        // Si un bloc else existe, génère le code pour le bloc else
+        if (ctx.instr().size() > 1) {
+            System.out.println("\twith else");
 
-        program.addInstruction(new Label(endLabel));
+            //cas true, on sort du if
+            String Label2 = generateNewLabel("EndIf_");
+            program.addInstruction(new JumpCall(JumpCall.Op.JMP, Label2));
+
+            //cas false, on fait le else
+            program.addInstruction(new Label(Label1));
+            Program falseBlockProgram = visit(ctx.instr(1)); 
+            program.addInstructions(falseBlockProgram);
+
+            //porte de sortie du if
+            program.addInstruction(new Label(Label2));
+        }
+        else {
+            //pas de else, on sort du if
+            program.addInstruction(new Label(Label1));
+        }
+
 
         return program;
     }
@@ -535,7 +582,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program program = new Program();
 
         // Création de l'étiquette pour le début de la boucle while
-        String startLabel = generateNewLabel();
+        String startLabel = generateNewLabel("StartWhile");
         program.addInstruction(new Label(startLabel));
 
         // Générer le code pour l'expression conditionnelle
@@ -543,7 +590,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(conditionProgram);
 
         // Création de l'étiquette pour la sortie de la boucle
-        String endLabel = generateNewLabel();
+        String endLabel = generateNewLabel("EndWhile");
         
         // Condition pour sortir de la boucle si elle n'est pas remplie
         program.addInstruction(new CondJump(CondJump.Op.JEQU, registerCounter - 1, 0, endLabel));
@@ -570,11 +617,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         //for : instr(0) = init, expr() = condition, instr(1) = itération, instr(2) = corps
         //affichage pour vérifier
 
-        System.out.println("init : " + ctx.instr(0).getText());
-        System.out.println("condition : " + ctx.expr().getText());
-        System.out.println("itération : " + ctx.instr(1).getText());
-        System.out.println("corps : " + ctx.instr(2).getText());
-
         // --- initialisation de la boucle ---------------------------
 
         // Supposons que la première instruction dans 'instr()' est l'initialisation
@@ -598,8 +640,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Corps de la boucle (supposons que c'est la 3ième) --------------------
         Program bodyProgram = visit(ctx.instr(2));
         program.addInstructions(bodyProgram);
-    
-
 
         // Supposons que la 2nd instruction est __l'itération__ ---------------------
         Program iterationProgram = visit(ctx.instr(1));
@@ -623,7 +663,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program returnProgram = visit(ctx.expr());
         // visit(expr) pose le résultat dans le dernier registre utilisé
         // c'est pourquoi on assigne pas de nouveaux registres
-
+        //Store le résultat
+        returnProgram.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 1));
+        returnProgram.addInstruction(new Mem(Mem.Op.ST, registerCounter - 1, 2));
         returnProgram.addInstruction(new Ret());
          
         return returnProgram;
@@ -646,7 +688,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // on gère le return
         if (ctx.getChild(i+1).getText().equals("return")) {
             program.addInstructions(visit(ctx.getChild(i+2)));
-            
+            program.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 1));
+            program.addInstruction(new Mem(Mem.Op.ST, registerCounter - 1, 2));
+            program.addInstruction(new Ret());
         }
 
         return program;
@@ -658,10 +702,24 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         //on affiche toutes les déclarations de fonctions
         System.out.println("visitDecl_fct");
 
-    
+        System.out.println("\t" + ctx.VAR(0).getText() + " : " + ctx.core_fct().getText());
+
+
         // On fait son étiquette
         String functionName = ctx.VAR(0).getText(); 
         program.addInstruction(new Label(functionName));
+
+        for (int i =  ctx.VAR().size(); i >= 1 ; i--) {
+            System.out.println("arg : " + ctx.VAR(i).getText());
+            //on visite chaque argument (le copie dans le registre [registerCounter - 1])
+            
+            //on déclare les arguments dans la table des variables
+            visit(ctx.VAR(i));
+
+            //on empile l'argument
+            program.addInstruction(new Mem(Mem.Op.LD, registerCounter - 1, 2));
+            program.addInstruction(new UALi(UALi.Op.SUB, 2,2,1));
+        }
 
         // Générer le code pour le corps de la fonction
         Program coreFunctionProgram = visit(ctx.core_fct());
@@ -682,6 +740,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitMain");
         program.addInstruction(new UAL(UAL.Op.XOR, 0, 0, 0));
         program.addInstruction(new UALi(UALi.Op.ADD, 1, 0, 1));
+        program.addInstruction(new UALi(UALi.Op.XOR, 2, 2, 2));
         program.addInstruction(new Label("main"));
         // Générer le code pour le corps de la fonction principale
         Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
