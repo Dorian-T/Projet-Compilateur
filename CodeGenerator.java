@@ -403,8 +403,33 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
         System.out.println("visitTab_initialization");
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitTab_initialization'");
+
+        
+        Program program = new Program();
+        int newReg = getNewRegister();
+        // on récupère l'addresse du tableau 
+        program.addInstruction(new UAL(UAL.Op.XOR, newReg, newReg, newReg));
+        program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg, registerCounter - 2));
+        for (int i = 0; i < ctx.expr().size(); i++) {
+            if (i != 0 && i % 8 == 0)
+            {
+                // mettre stack pointer + 1
+                program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1));
+                //on met l'adresse de la prochaine partie du tableau dans le registre
+                program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg, 1));
+                program.addInstruction(new Mem(Mem.Op.ST, 2, newReg));  
+                // mettre stack pointer dans newReg
+                program.addInstruction(new UALi(UALi.Op.ADD, newReg, 2, 0));
+                program.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 9));
+            }
+            // Visite chaque argument de la fonction
+            Program argProgram = visit(ctx.expr(i));
+            program.addInstructions(argProgram);
+            //on les empiles, après avoir augmenté le stack pointer
+            program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg,1));
+            program.addInstruction(new Mem(Mem.Op.ST, registerCounter - 1, newReg));
+        }
+        return program;
     }
     
     @Override
