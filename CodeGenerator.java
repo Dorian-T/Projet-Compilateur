@@ -224,8 +224,59 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_access(grammarTCLParser.Tab_accessContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitTab_access'");
+        System.out.println("visitTab_access");
+        Program program = new Program();
+        // recuperer registre nom tableau
+        program.addInstructions(visit(ctx.expr(0)));
+        int tabAdress = registerCounter - 1;
+
+        program.addInstructions(visit(ctx.expr(1)));
+        int index = registerCounter - 1;
+
+        //on fait un registre pour savoir à quelle case du tableau on est
+        int caseTab = getNewRegister();
+        program.addInstruction(new UAL(UAL.Op.XOR, caseTab, caseTab, caseTab));
+
+        int reg8 = getNewRegister();
+        program.addInstruction(new UALi(UALi.Op.ADD, reg8, 0, 8));
+
+        int tailleTab = getNewRegister();
+        program.addInstruction(new UAL(UAL.Op.XOR, tailleTab, tailleTab, tailleTab));
+        program.addInstruction(new Mem(Mem.Op.LD, tailleTab, tabAdress));
+        program.addInstruction(new UALi(UALi.Op.ADD,tabAdress,tabAdress,1));
+        //on vérifie que l'index est bien dans le tableau
+        String tailleTabOK = generateNewLabel();
+
+        program.addInstruction(new CondJump(CondJump.Op.JINF, index, tailleTab, tailleTabOK));
+        
+        //on affiche une erreur
+        program.addInstruction(new IO(IO.Op.PRINT, 0));
+        program.addInstruction(new Ret());
+
+        //on continue
+        String dansBonneSection = generateNewLabel();
+        
+        int adresseCase = getNewRegister();
+        //index - caseTab = adresseCase
+        program.addInstruction(new UAL(tailleTabOK,UAL.Op.SUB, adresseCase, index, caseTab));
+
+        program.addInstruction(new CondJump(CondJump.Op.JINF, adresseCase, reg8, dansBonneSection));
+
+        // on passe à la section suivante
+        program.addInstruction(new UALi(UALi.Op.ADD, tabAdress, tabAdress, 8));
+        program.addInstruction(new Mem(Mem.Op.LD, tabAdress, tabAdress));
+        program.addInstruction(new UALi(UALi.Op.ADD, caseTab, caseTab, 8));
+        program.addInstruction(new JumpCall(JumpCall.Op.JMP, tailleTabOK));
+
+        //on est dans la bonne section
+        program.addInstruction(new Label(dansBonneSection));
+        program.addInstruction(new UAL(UAL.Op.ADD, tabAdress, tabAdress, adresseCase));
+
+        //on charge la valeur de la case dans le registre
+        int rslt = getNewRegister();
+        program.addInstruction(new Mem(Mem.Op.LD, rslt, tabAdress));
+
+        return program;
     }
 
     @Override
@@ -404,12 +455,14 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
         System.out.println("visitTab_initialization");
 
-        
         Program program = new Program();
         int newReg = getNewRegister();
         // on récupère l'addresse du tableau 
         program.addInstruction(new UAL(UAL.Op.XOR, newReg, newReg, newReg));
         program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg, registerCounter - 2));
+        int size = getNewRegister();
+        program.addInstruction(new UALi(UALi.Op.ADD, size, 0, ctx.expr().size()));
+        program.addInstruction(new Mem(Mem.Op.ST, size, newReg));
         for (int i = 0; i < ctx.expr().size(); i++) {
             if (i != 0 && i % 8 == 0)
             {
