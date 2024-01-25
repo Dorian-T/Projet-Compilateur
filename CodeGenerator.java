@@ -41,6 +41,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     }
 
+    public void afficherVariable() {
+        System.out.println("Affichage des variables : ");
+        for (Entry<String, Integer> entry : variableTable.entrySet()) {
+            System.out.println("\t" + entry.getKey() + " : " + entry.getValue());
+        }
+        System.out.println("Fin de l'affichage des variables");
+    }
     /**
      * Obtient un nouveau numéro de registre disponible.
      * @return Un nouveau numéro de registre
@@ -223,7 +230,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitBrackets(grammarTCLParser.BracketsContext ctx) {
-        System.out.println("visitBrackets");
         Program program = new Program();
 
         // Visite l'expression contenue entre les crochets
@@ -396,6 +402,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
+        System.out.println("visitTab_initialization");
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'visitTab_initialization'");
     }
@@ -437,9 +444,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitBase_type");
         Program program = new Program();
 
-        // Récupère le nom du type de base depuis le contexte
-        //String typeName = ctx.BASE_TYPE().getText();
-
         // Génère le code pour la déclaration du type de base
         program.addInstruction(new Label("BASE_TYPE"));
 
@@ -451,8 +455,26 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
     @Override
     public Program visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitTab_type'");
+        System.out.println("visitTab_type");
+
+        Program program = new Program();
+        program.addInstructions(visit(ctx.type()));
+        
+        //on assigne des cases mémoires pour le tableau
+        int newReg = getNewRegister();
+        //incrémentation du stack pointer
+        program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1));
+        //on charge l'adresse du tableau dans le registre
+        program.addInstruction(new UALi(UALi.Op.ADD, newReg, 2, 0));
+        //on met la taille du tableau dans le registre
+        program.addInstruction(new Mem(Mem.Op.ST, 0, 2));
+
+        //on place le tableau dans la mémoire : 
+        program.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 9));
+        //on initialise l'adresse de la prochaine partie du tableau à 0
+        program.addInstruction(new Mem(Mem.Op.ST, 0, 2));
+
+        return program;
     }
 
     @Override
@@ -465,6 +487,10 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // on déclare la variable dans la table des variables
         variableTable.put(ctx.VAR().getText(), destRegister);
         
+        //on gère les tableaux (visit le type)
+        program.addInstructions(visit(ctx.type()));
+
+
         if (ctx.expr() == null) return program;
         
         program.addInstructions(visit(ctx.expr()));
@@ -683,6 +709,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             program.addInstructions(instrProgram);
         }
         System.out.println(str);
+
+        afficherVariable();
+
         // on gère le return
         if (ctx.getChild(i+1).getText().equals("return")) {
             program.addInstructions(visit(ctx.getChild(i+2)));
@@ -737,12 +766,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitMain");
         program.addInstruction(new UAL(UAL.Op.XOR, 0, 0, 0));
         program.addInstruction(new UALi(UALi.Op.ADD, 1, 0, 1));
-        program.addInstruction(new UALi(UALi.Op.XOR, 2, 2, 2));
+        program.addInstruction(new UAL(UAL.Op.XOR, 2, 2, 2));
         program.addInstruction(new Label("main"));
         // Générer le code pour le corps de la fonction principale
         Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
         program.addInstructions(coreFunctionProgram);
         program.addInstruction(new Stop());
+
         // Générer le code pour chaque déclaration de fonction
         for (grammarTCLParser.Decl_fctContext declContext : ctx.decl_fct()) {
             Program declProgram = visitDecl_fct(declContext);
