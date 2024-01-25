@@ -102,9 +102,12 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
     @Override
     public Type visitCall(grammarTCLParser.CallContext ctx) {
         System.out.println(" - visit call : " + ctx.getChild(0).getText());
+        if(!this.types.containsKey(new UnknownType(ctx.getChild(0))))
+            throw new UnsupportedOperationException("call sur fonction non déclarée");
 
-        // TODO:fonction
-        throw new UnsupportedOperationException("Unimplemented method 'visitCall'");
+        Type type_fonction = this.types.get(new UnknownType(ctx.getChild(0)));
+
+        throw new UnsupportedOperationException("Unimplemented method 'visitCall'"); //TODO:fonction-visitCall
     }
 
     @Override
@@ -254,7 +257,11 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitBlock(grammarTCLParser.BlockContext ctx) {
+
+        // on visite le premier fils pour initialiser typeretour.
         Type typeretour = visit(ctx.getChild(1));
+
+        // on visite les autres fils et on unifie les types de retour avec addInTypesMap !
         for (int i = 2; i < ctx.getChildCount() - 1; i++) {
             if (typeretour != null)
                 typeretour = addInTypesMap(typeretour.unify(typeretour), visit(ctx.getChild(i)));
@@ -298,9 +305,15 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitFor(grammarTCLParser.ForContext ctx) {
+        
+        // on visite la declaration
         visit(ctx.getChild(2));
+        // on visite la condition
         visit(ctx.getChild(4));
+        // on visite l'incrementation
         visit(ctx.getChild(6));
+        
+        // on visite le bloc et on retourne le type de retour possiblement null.
         return visit(ctx.getChild(8));
     }
 
@@ -373,30 +386,36 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return null;
     }
 
-    // appelle clasique de cette fonction : returnType =
-    // this.addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
+    // appelle clasique de cette fonction : 
+    // returnType = this.addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
+    // => si mopdifMap est null, on ne fait rien... (pas de changement)
+    // => si returnType n'est pas null, on le met a jour avec modifMap puis this.types
+    // => on ajoute modifMap a this.types (souvent en provenance d'un unify entre deux type de variable)
+    // => on met a jour tout les types de this.types avec les changements
+    // => on verifie qu'il n'y a pas de boucle infinie
+    // => on supprime les variables de fin de tableau grace a une lambda expression !!!
     public Type addInTypesMap(Map<UnknownType, Type> modifMap, Type returnType) {
 
         if (modifMap == null) // s il n'y a pas eu de changement
             return returnType;
 
-        // on verifie si returnType contien une variable et si il y a eu des changements
-        while (containsVar(returnType) && !(returnType.equals(returnType.substituteAll(this.types)))) {
-
-            // on fait les substitutions
+        // on fait les substitutions dans returnType pour le mettre a jour et le return a la fin
+        if(returnType != null){
+            returnType = returnType.substituteAll(modifMap);
             returnType = returnType.substituteAll(this.types);
         }
 
+        // on ajoute les changements dans this.types
         this.types.putAll(modifMap);
 
-        // on fait les substitutions dans this.types
+        // on fait les substitutions dans this.types pour metre a jour tout les types concernés
         for (UnknownType key : this.types.keySet()) {
-            if (containsVar(this.types.get(key))
-                    && !(this.types.get(key).equals(this.types.get(key).substituteAll(this.types)))) {
-                this.types.put(key, this.types.get(key).substituteAll(this.types));
-            }
+
+            this.types.put(key, this.types.get(key).substituteAll(this.types));
+
         }
 
+        // on verifie qu'il n'y a pas de boucle infinie
         verifBoucleInfini();
 
         // on supprime les variables de fin de tableau grace a une lambda expression !!!
@@ -406,16 +425,24 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return returnType;
     }
 
+    // addInTypesMap pour seulement modifier this.types sans besoin de garder le type entré en parametre
+    // comme pour les unification avec des accesseurs de tableau : 
+    // a = INT[][][]  et b = #b
+    // si on fait b = a[0][0] on appelle addInTypesMap(a[0][0].unify(b)) et on ne veut pas garder le type de a[0][0] car on ne l'utilise pas,
+    // on stocke deja le type de b et de a dans this.types. Ce qui est suffisant.
     public void addInTypesMap(Map<UnknownType, Type> modifMap) {
         addInTypesMap(modifMap, null);
     }
 
+    // addInTypesMap permettant de ne pas avoir a creer une map pour ajouter un seul element...
     public void addInTypesMap(UnknownType key, Type value) {
         Map<UnknownType, Type> map = new HashMap<UnknownType, Type>();
         map.put(key, value);
         addInTypesMap(map, null);
     }
 
+    // verifie si le type contient une variable
+    // c'est comme un contains mais pour n'importe quel UnknownType
     public boolean containsVar(Type t) {
         if (t instanceof UnknownType)
             return true;
@@ -424,6 +451,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return false;
     }
 
+    // verifie si il y a une boucle infinie dans les types du genre : { #a=[][][]#a }
+    // ne detecte pas petite boucle : { #a=[][]#a } car elle sont necessaire pour les cas ou on transforme un tableau en tableau de tableau...
     public void verifBoucleInfini() {
         for (Entry<UnknownType, Type> entry : this.types.entrySet()) {
             if (entry.getValue().contains(entry.getKey()) && entry.getValue() instanceof ArrayType) {
@@ -443,6 +472,12 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
             }
         }
     }
+
+
+
+    
+    // ancinne version de addInTypesMap : (plusieurs tentatives)
+
 
     // public void join(Map<UnknownType,Type> h){
     // if(h == null){
