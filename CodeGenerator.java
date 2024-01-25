@@ -28,8 +28,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     private int registerCounter;
     private Map<String, Integer> variableTable;
     private int labelCounter;
-    private int conditionRegister;
-    private Map<String, Integer> retFunctionTable;
+
     /**
      * Constructeur
      * @param types types de chaque variable du code source
@@ -39,8 +38,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         this.registerCounter = 3;
         this.variableTable = new java.util.HashMap<String, Integer>();
         this.labelCounter = 0;
-        this.conditionRegister = 0;
-        this.retFunctionTable = new java.util.HashMap<String, Integer>();
+
     }
 
     /**
@@ -245,7 +243,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         for (int i = 0; i < ctx.expr().size(); i++) {
             // Visite chaque argument de la fonction
-            System.out.println("\t" + ctx.expr(i).getText());
+            System.out.println("\t" + ctx.expr(i).getText() + " dans " + getVariableAddress(ctx.expr(i).getText()));
             Program argProgram = visit(ctx.expr(i));
             program.addInstructions(argProgram);
             //on les empiles, après avoir augmenté le stack pointer
@@ -709,15 +707,16 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         String functionName = ctx.VAR(0).getText(); 
         program.addInstruction(new Label(functionName));
 
-        for (int i =  ctx.VAR().size(); i >= 1 ; i--) {
+        for (int i =  ctx.VAR().size() -1; i > 0 ; i--) {
             System.out.println("arg : " + ctx.VAR(i).getText());
-            //on visite chaque argument (le copie dans le registre [registerCounter - 1])
-            
-            //on déclare les arguments dans la table des variables
-            visit(ctx.VAR(i));
+
+            //on ajoute les arguments dans la table des variables
+            int newReg = getNewRegister();
+            variableTable.put(ctx.VAR(i).getText(), newReg);
+
 
             //on empile l'argument
-            program.addInstruction(new Mem(Mem.Op.LD, registerCounter - 1, 2));
+            program.addInstruction(new Mem(Mem.Op.LD, newReg, 2));
             program.addInstruction(new UALi(UALi.Op.SUB, 2,2,1));
         }
 
@@ -728,8 +727,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Ajouter l'instruction RET
         program.addInstruction(new Ret());
 
-        //on enregistre le retour de la fonction
-        retFunctionTable.put(functionName, registerCounter - 1);
 
         return program;
     }    
