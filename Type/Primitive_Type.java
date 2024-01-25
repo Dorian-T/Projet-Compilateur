@@ -43,7 +43,7 @@ public class Primitive_Type extends Type {
 
     @Override
     public Type substitute(UnknownType v, Type t) {
-        throw new RuntimeException("IMPOSSIBLE : Primitive_Type.substitute");
+        return this;
     }
 
     @Override
