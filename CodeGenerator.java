@@ -444,9 +444,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitBase_type");
         Program program = new Program();
 
-        // Récupère le nom du type de base depuis le contexte
-        //String typeName = ctx.BASE_TYPE().getText();
-
         // Génère le code pour la déclaration du type de base
         program.addInstruction(new Label("BASE_TYPE"));
 
