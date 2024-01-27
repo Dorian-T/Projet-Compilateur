@@ -288,7 +288,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
-
+    /**
+     * Visite un nœud d'entier dans l'arbre syntaxique.
+     * Génère le code pour traiter une valeur entière.
+     *
+     * @param ctx Le contexte du nœud d'entier.
+     * @return Le programme généré pour le traitement de l'entier.
+     */
     @Override
     public Program visitInteger(grammarTCLParser.IntegerContext ctx) {
         System.out.println("visitInteger");
@@ -645,7 +651,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-
+    /**
+     * Visite un nœud d'addition dans l'arbre syntaxique.
+     * Génère le code pour effectuer une addition ou une soustraction entre deux expressions.
+     *
+     * @param ctx Le contexte d'addition.
+     * @return Le programme généré pour l'opération d'addition ou de soustraction.
+     */
     @Override
     public Program visitAddition(grammarTCLParser.AdditionContext ctx) {
         System.out.println("visitAddition");
