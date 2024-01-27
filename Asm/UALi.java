@@ -1,7 +1,7 @@
 package Asm;
 public class UALi extends Instruction{
     
-    public static enum Op { ADD, SUB, MUL, DIV, MOD, XOR, AND, OR, SL, SR, LOADI };
+    public static enum Op { ADD, SUB, MUL, DIV, MOD, XOR, AND, OR, SL, SR };
     private int dest;
     private int sr;
     private int imm;

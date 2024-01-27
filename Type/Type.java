@@ -3,7 +3,7 @@ import java.util.Map;
 
 
 public abstract class Type {
-    public enum Base { INT, BOOL};
+    public enum Base { INT, BOOL };
 
     /**
      * Fonction de hashage pour les HashMap
@@ -22,10 +22,10 @@ public abstract class Type {
 
     /** 
      * Test d'égalité
-     * @param t type 
+     * @param t Object
      * @return boolean 
      */
-    public abstract boolean equals(Object t);
+    @Override public abstract boolean equals(Object t);
 
     /** 
      * Substitution

@@ -1,5 +1,4 @@
 package Type;
-import java.util.HashMap;
 import java.util.Map;
 
 public class ArrayType extends Type{
@@ -23,44 +22,33 @@ public class ArrayType extends Type{
 
     @Override
     public Map<UnknownType, Type> unify(Type t) {
-        Map<UnknownType,Type> resultat = new HashMap<UnknownType,Type>();
-        
-        if(this.equals(t) || t == null) 
-            return null;
-        
-        if(t instanceof UnknownType){
-            resultat.put((UnknownType) t, this);
-            return resultat;
-        }
-
-        if(t instanceof ArrayType)
-            return this.getTabType().unify(((ArrayType) t).getTabType());
-        
-        throw new RuntimeException("Unification error : ArrayType");
-    }
-
-    @Override
-    public boolean equals(Object t) {
-        return (t instanceof ArrayType) && (((ArrayType)t).getTabType().equals(this.tabType));
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'unify'");
     }
 
     @Override
     public Type substitute(UnknownType v, Type t) {
-        return new ArrayType(this.tabType.substitute(v, t));
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'substitute'");
     }
 
     @Override
     public boolean contains(UnknownType v) {
-        return this.tabType.contains(v);
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'contains'");
     }
 
-    /**
-     * Returns a string representation of the ArrayType.
-     *
-     * @return a string representation of the ArrayType
-     */
+    @Override
+    public boolean equals(Object t) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'equals'");
+    }
+
     @Override
     public String toString() {
-        return "[]" + tabType.toString();
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'toString'");
     }
+
+    
 }

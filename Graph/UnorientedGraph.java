@@ -2,7 +2,7 @@ package Graph;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class UnorientedGraph<T> extends Graph<T> {
+public class UnorientedGraph<T> extends Graphe<T> {
     private HashMap<T,Integer> colors = new HashMap<T,Integer>(); 
     
     public UnorientedGraph() {

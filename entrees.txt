@@ -1,5 +1,0 @@
-int main()
-{
-    auto a;
-    return 1;
-}

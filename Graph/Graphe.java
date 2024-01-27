@@ -2,14 +2,14 @@ package Graph;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public abstract class Graph<T> {
+public abstract class Graphe<T> {
     protected ArrayList<T> vertices;
     protected HashMap<T,ArrayList<T>> adjList;
    
     /**
      * Constructeur
      */
-    public Graph() {
+    public Graphe() {
         this.vertices = new ArrayList<T>();
         this.adjList = new HashMap<T,ArrayList<T>>();
     }

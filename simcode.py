@@ -159,11 +159,7 @@ fout = open("sorties.txt",'w')
 # EXECUTION
 # -------------------------------------------------
 
-while PROG[CO] == [] or PROG[CO][0] != "STOP":
-
-    if (PROG[CO] == []): # ligne vide
-        CO = CO + 1
-        continue
+while PROG[CO][0] != "STOP":
 
     if checkSyntaxe(PROG[CO],SYMB) == False:
         print("ERROR LINE",NUML[CO]+1)
@@ -171,7 +167,7 @@ while PROG[CO] == [] or PROG[CO][0] != "STOP":
             print(x,)
         print()
         sys.exit(0)
-
+        
 
     NbCycle = NbCycle + 1
 

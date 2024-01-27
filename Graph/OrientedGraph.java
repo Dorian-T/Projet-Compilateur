@@ -1,7 +1,7 @@
 package Graph;
 import java.util.ArrayList;
 
-public class OrientedGraph<T> extends Graph<T> {
+public class OrientedGraph<T> extends Graphe<T> {
     
     /** 
      * Ajout d'un arc

@@ -1,7 +1,7 @@
 package Asm;
 public class UAL extends Instruction{
     
-    public static enum Op { ADD, SUB, MUL, DIV, MOD, XOR, AND, OR, SL, SR, POP, PUSH};
+    public static enum Op { ADD, SUB, MUL, DIV, MOD, XOR, AND, OR, SL, SR };
     private int dest;
     private int sr1;
     private int sr2;
@@ -82,23 +82,6 @@ public class UAL extends Instruction{
         this.sr1 = sr1;
         this.sr2 = sr2;
     }
-
-     /**
-     * Constructeur pour l'opération PUSH
-     * @param label label de l'instruction
-     * @param op type d'opération
-     * @param dest numéro du registre de destination
-     * @param sr1 numéro du premier registre source
-     * @param sr2 numéro du second registre source
-     */
-    /*
-    public UAL(String label, Op op, int dest, int sr1, int sr2) {
-        super(label,op.toString());
-        this.dest = dest;
-        this.sr1 = sr1;
-        this.sr2 = sr2;
-    }
-     */
 
     /** 
      * Conversion en String

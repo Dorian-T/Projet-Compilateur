@@ -48,13 +48,6 @@ public class FunctionType extends Type {
     }
 
     @Override
-    public boolean equals(Object t) {
-        return (t instanceof FunctionType)
-            && (((FunctionType)t).getReturnType().equals(this.returnType))
-            && (((FunctionType)t).getNbArgs() == this.getNbArgs());
-    }
-
-    @Override
     public Type substitute(UnknownType v, Type t) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'substitute'");
@@ -62,20 +55,20 @@ public class FunctionType extends Type {
 
     @Override
     public boolean contains(UnknownType v) {
-        return this.returnType.contains(v);
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'contains'");
     }
 
-    /**
-     * Returns a string representation of the FunctionType.
-     *
-     * @return a string representation of the FunctionType
-     */
+    @Override
+    public boolean equals(Object t) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'equals'");
+    }
+
     @Override
     public String toString() {
-        String str = "";
-        str += returnType.toString() + "( ";
-        for(int i = 0; i < argsTypes.size(); i++)
-            str += (argsTypes.get(i).toString() + " ");
-        return str.toString() + ")";
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'toString'");
     }
+
 }
