@@ -217,8 +217,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
-        program.addInstruction(new UAL(UAL.Op.XOR, newReg, newReg, newReg));
-        program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg, Integer.parseInt(ctx.INT().getText())));
+
+        program.addInstruction(new Com("Integer"));
+        program.addInstruction(new UALi(UALi.Op.ADD, newReg, 0, Integer.parseInt(ctx.INT().getText())));
 
         return program;
     }
@@ -462,32 +463,45 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitTab_initialization");
 
         Program program = new Program();
-        int newReg = getNewRegister();
-        // on récupère l'addresse du tableau 
-        program.addInstruction(new UAL(UAL.Op.XOR, newReg, newReg, newReg));
-        program.addInstruction(new UAL(UAL.Op.ADD, newReg, newReg, registerCounter - 2));
+        program.addInstruction(new Com("TabInitialization"));
+
+        int tabAdress = registerCounter - 1;
+
+        int tabIterator = getNewRegister();
+        program.addInstruction(new UAL(UAL.Op.ADD, tabIterator, 0, tabAdress));
         int size = getNewRegister();
         program.addInstruction(new UALi(UALi.Op.ADD, size, 0, ctx.expr().size()));
-        program.addInstruction(new Mem(Mem.Op.ST, size, newReg));
+        program.addInstruction(new Mem(Mem.Op.ST, size, tabIterator));
+        
         for (int i = 0; i < ctx.expr().size(); i++) {
+            
+            //on passe à la case suivante du tableau
+            program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, tabIterator, 1));
+
             if (i != 0 && i % 8 == 0)
             {
-                // mettre stack pointer + 1
+
+                // on prend l'adresse de la première case libre de la memoire
                 program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1));
-                //on met l'adresse de la prochaine partie du tableau dans le registre
-                program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg, 1));
-                program.addInstruction(new Mem(Mem.Op.ST, 2, newReg));  
-                // mettre stack pointer dans newReg
-                program.addInstruction(new UALi(UALi.Op.ADD, newReg, 2, 0));
-                program.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 9));
+                //on met l'adresse de la prochaine partie du tableau dans la section précédente
+                program.addInstruction(new Mem(Mem.Op.ST, 2, tabIterator));  
+ 
+                // mettre stack pointer dans l'itérateur du tableau
+                program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, 2, 0));
+                program.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 8));//8 cases dans le tableau, on passe de case 1 à case 9 (prochaine ad)
             }
-            // Visite chaque argument de la fonction
+            // Visite les expressions à ajouter au tableau
             Program argProgram = visit(ctx.expr(i));
             program.addInstructions(argProgram);
-            //on les empiles, après avoir augmenté le stack pointer
-            program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg,1));
-            program.addInstruction(new Mem(Mem.Op.ST, registerCounter - 1, newReg));
+            program.addInstruction(new Mem(Mem.Op.ST, registerCounter - 1, tabIterator));
         }
+
+        //renvois l'adresse du tableau
+        program.addInstruction(new UAL(UAL.Op.ADD, registerCounter - 1, 0, tabAdress));
+        //normalement ça casse rien
+
+
+        program.addInstruction(new Com("End Tab Init"));
         return program;
     }
     
@@ -529,7 +543,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program program = new Program();
 
         // Génère le code pour la déclaration du type de base
-
+        program.addInstruction(new Com("BaseType"));
 
         //c'est soit un int soit un bool, ou un auto...
 
@@ -558,6 +572,10 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         //on initialise l'adresse de la prochaine partie du tableau à 0
         program.addInstruction(new Mem(Mem.Op.ST, 0, 2));
 
+        //on met l'adresse du tableau dans le registre
+        int tabAdress = getNewRegister();
+        program.addInstruction(new UAL(UAL.Op.ADD, tabAdress, newReg, 0));
+        
         return program;
     }
 
