@@ -556,6 +556,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitTab_type");
 
         Program program = new Program();
+        program.addInstruction(new Com("TabType"));
         program.addInstructions(visit(ctx.type()));
         
         //on assigne des cases mémoires pour le tableau
@@ -589,8 +590,11 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // on déclare la variable dans la table des variables
         variableTable.put(ctx.VAR().getText(), destRegister);
         
-        //on gère les tableaux (visit le type)
+        //on gère les tableaux (visit le type) et retourne l'adresse du tableau
         program.addInstructions(visit(ctx.type()));
+        //on met l'adresse du tableau dans le registre
+        program.addInstruction(new UAL(UAL.Op.ADD, destRegister, registerCounter - 1, 0));
+
 
 
         if (ctx.expr() == null) return program;
@@ -622,18 +626,149 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitAssignment(grammarTCLParser.AssignmentContext ctx) {
         System.out.println("visitAssignment");
         Program program = new Program();
+        program.addInstruction(new Com("Assignment"));
 
 
-        // Visite l'expression à droite de l'opérateur d'assignation
-        Program expressionProgram = visit(ctx.expr(0)); // Utilise expr(0) pour obtenir l'expression
-        // Ajoute les instructions générées pour l'expression à droite de l'opérateur d'assignation
+        // trouve la valeur à assigner en visitan expression dans TYPE[trucs] = expression 
+        Program expressionProgram = visit(ctx.expr(ctx.expr().size() - 1));
         program.addInstructions(expressionProgram);
-        // Ajoute une instruction pour stocker la valeur dans la variable
-        int sr1 = registerCounter - 1;
-        //sr1 est donc le registre contenant le résultat de l'expression
-        int regvar = getVariableAddress(ctx.VAR().getText());
+        // Enregistre le registre contenant le résultat de l'expression
+        int source = registerCounter - 1;
 
-        program.addInstruction(new UALi(UALi.Op.ADD, regvar, sr1, 0));
+        //source est donc le registre contenant le résultat de l'expression
+        int regVarAssignee = getVariableAddress(ctx.VAR().getText());
+
+        //cas variable simple
+        if (ctx.expr().size() == 1) {
+            //on assigne la valeur de l'expression à la variable
+            program.addInstruction(new UAL(UAL.Op.ADD, regVarAssignee, source, 0));
+            program.addInstruction(new Com("End Assignment"));
+            return program;
+        }
+
+        //cas tableau --------------------------------------------------------------------------------------
+
+        int reg8 = getNewRegister();
+        program.addInstruction(new UALi(UALi.Op.ADD, reg8, 0, 8));
+
+        //si c'est un tableau, on doit faire un truc spécial :
+        //c'est comme à la fête des mères quoi...
+        int tabAdress = regVarAssignee;
+        //on entre dans l'accès au tableau (initialisation des variables)
+        int tabIterator = getNewRegister();
+        program.addInstruction(new UAL(UAL.Op.ADD, tabIterator, tabAdress, 0));
+        for (int i= 0; i < ctx.expr().size() - 1; i++) { 
+            
+            // Visite chaque argument de la fonction (dans l'ordre)
+            program.addInstructions(visit(ctx.expr(i)));
+            //récupère l'index de la case du tableau
+            int index = registerCounter - 1;
+            int NbSectionIndex = getNewRegister();
+            int reste = getNewRegister();
+    
+
+
+            //récupère la taille du tableau
+            int nbSectionTab = getNewRegister();
+            int realTailleTab = getNewRegister();
+            program.addInstruction(new Mem(Mem.Op.LD, realTailleTab, tabIterator));
+            // ------------------------- on met à jour la taille du tableau si besoin -------------------------
+                program.addInstruction(new UALi(UALi.Op.ADD, reste, index, 1));
+                String truc = generateNewLabel("truc_");
+                program.addInstruction(new CondJump(CondJump.Op.JSEQ, realTailleTab, reste,truc));
+                program.addInstruction(new Mem(Mem.Op.ST, reste, tabIterator));
+            program.addInstruction(new Label(truc));
+
+            program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, tabIterator, 1));
+            program.addInstruction(new UALi(UALi.Op.ADD, nbSectionTab, realTailleTab, 7));
+            //si c'est 0, passe à 1 pour éviter la division par 0
+            String taille0 = generateNewLabel("Taille0_");
+            program.addInstruction(new CondJump(CondJump.Op.JNEQ, realTailleTab, 0, taille0));
+            program.addInstruction(new UALi(UALi.Op.ADD, nbSectionTab, realTailleTab, 1));
+            program.addInstruction(new Label(taille0));
+            program.addInstruction(new UALi(UALi.Op.DIV, nbSectionTab, nbSectionTab, 8));
+            //on a le nombre de cases mémoires réservées pour le tableau
+
+            program.addInstruction(new UALi(UALi.Op.ADD, reste, index, 8));
+            program.addInstruction(new UALi(UALi.Op.DIV, NbSectionIndex, reste, 8));
+            //on a le nombre de cases mémoires à réserver pour le tableau
+
+        
+
+
+
+
+
+
+            //si le nombre de sections de l'index est supérieur au nombre de sections du tableau, on augmente la taille du tableau
+            String tabTropPetit = generateNewLabel("tab_trop_petit");
+            String TailleTabOK = generateNewLabel("TailleTabOK_");
+
+            program.addInstruction(new CondJump(CondJump.Op.JINF, nbSectionTab, NbSectionIndex, tabTropPetit)); //--------------------------------
+            //yes sir
+            // --------le tableau est assez grand, on peut continuer et on va à la bonne section --------------
+
+            program.addInstruction(new UAL(UAL.Op.ADD, reste, NbSectionIndex, 0));
+                String itererDansTab2 = generateNewLabel("ItererDansTab2_");
+                program.addInstruction(new Label(itererDansTab2));
+                    program.addInstruction(new UALi(UALi.Op.SUB, reste, reste, 1));
+                    program.addInstruction(new CondJump(CondJump.Op.JEQU, reste, 0, TailleTabOK));
+                    program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, tabIterator, 8));
+                    program.addInstruction(new Mem(Mem.Op.LD, tabIterator, tabIterator));
+
+                    program.addInstruction(new JumpCall(JumpCall.Op.JMP, itererDansTab2));
+            
+                
+            // ---------------------------- on va à la dernière section déclarée du tableau - ----------------------------
+            program.addInstruction(new Label(tabTropPetit));
+            String tailleTabPasOK = generateNewLabel("TailleTabPasOK_");
+            program.addInstruction(new UAL(UAL.Op.ADD, reste, nbSectionTab, 0));
+            String itererDansTab = generateNewLabel("ItererDansTab_");
+            program.addInstruction(new Label(itererDansTab));
+                program.addInstruction(new UALi(UALi.Op.SUB, reste, reste, 1));
+                program.addInstruction(new CondJump(CondJump.Op.JEQU, reste, 0, tailleTabPasOK));
+                program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, tabIterator, 8));
+                program.addInstruction(new Mem(Mem.Op.LD, tabIterator, tabIterator));
+                
+                program.addInstruction(new JumpCall(JumpCall.Op.JMP, itererDansTab));
+                
+
+            
+            // ---------------------------- on déclare les cases comme il faut (au moins 1 passage) - ----------------------------
+                program.addInstruction(new Label(tailleTabPasOK));
+            
+                //on augmente la taille du tableau
+                program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1)); //ahut pile
+                program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, tabIterator, 8));//on passe à la case suivante
+                program.addInstruction(new Mem(Mem.Op.ST, 2, tabIterator));  //enregistre l'adresse de la prochaine partie du tableau
+                //on itère sur le tableau
+                program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, 2, 0));//on met a jours l'itérateur
+
+                program.addInstruction(new UALi(UALi.Op.ADD, 2, 2, 8));//obn met à jour le stack pointer
+      
+                program.addInstruction(new UALi(UALi.Op.ADD, nbSectionTab, nbSectionTab, 1));//il y a une section de plus
+                program.addInstruction(new CondJump(CondJump.Op.JINF, nbSectionTab, NbSectionIndex, tailleTabPasOK));
+
+    
+            // ------------ on est dans la bonne section, on peut prendre l'adresse de la bonne case ------------
+            program.addInstruction(new Label(TailleTabOK));
+            program.addInstruction(new UALi(UALi.Op.SUB, reste, NbSectionIndex, 1));
+            program.addInstruction(new UALi(UALi.Op.MUL, reste, reste, 8));
+
+            program.addInstruction(new UAL(UAL.Op.SUB, reste, index, reste));
+
+            program.addInstruction(new UAL(UAL.Op.ADD, tabIterator, tabIterator, reste));
+
+        }
+
+
+
+
+        //on assigne la valeur de l'expression à la case du tableau
+        program.addInstruction(new Mem(Mem.Op.ST, source, tabIterator));
+        
+
+        program.addInstruction(new Com("End Assignment"));
         return program;
     }
 
