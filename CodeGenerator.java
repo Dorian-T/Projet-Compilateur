@@ -302,6 +302,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud d'accès à un tableau dans l'arbre syntaxique.
+     * Génère le code pour accéder à une case spécifique d'un tableau.
+     * 
+     * @param ctx Le contexte d'accès au tableau.
+     * @return Le programme généré pour l'accès au tableau.
+     */
     @Override
     public Program visitTab_access(grammarTCLParser.Tab_accessContext ctx) {
         System.out.println("visitTab_access");
@@ -364,6 +371,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud contenant des expressions entre crochets dans l'arbre syntaxique.
+     * Génère le code pour évaluer l'expression entre crochets.
+     * 
+     * @param ctx Le contexte des crochets.
+     * @return Le programme généré pour l'expression entre crochets.
+     */
     @Override
     public Program visitBrackets(grammarTCLParser.BracketsContext ctx) {
         Program program = new Program();
@@ -377,6 +391,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud d'appel de fonction dans l'arbre syntaxique.
+     * Génère le code pour appeler une fonction et gérer ses arguments.
+     * 
+     * @param ctx Le contexte de l'appel de fonction.
+     * @return Le programme généré pour l'appel de fonction.
+     */
     @Override
     public Program visitCall(grammarTCLParser.CallContext ctx) {
         System.out.println("visitCall");
@@ -407,6 +428,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
+    /**
+     * Visite un nœud de valeur booléenne dans l'arbre syntaxique.
+     * Génère le code pour représenter une valeur booléenne (true ou false).
+     * 
+     * @param ctx Le contexte de la valeur booléenne.
+     * @return Le programme généré pour la valeur booléenne.
+     */
     @Override
     public Program visitBoolean(grammarTCLParser.BooleanContext ctx) {
         System.out.println("visitBoolean");
@@ -422,6 +450,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud de l'opération AND dans l'arbre syntaxique.
+     * Génère le code pour effectuer une opération logique AND entre deux expressions.
+     * 
+     * @param ctx Le contexte de l'opération AND.
+     * @return Le programme généré pour l'opération AND.
+     */
     @Override
     public Program visitAnd(grammarTCLParser.AndContext ctx) {
         System.out.println("visitAnd");
@@ -454,7 +489,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-    
+    /**
+     * Visite un nœud de variable dans l'arbre syntaxique.
+     * Génère le code pour accéder à une variable.
+     * 
+     * @param ctx Le contexte de la variable.
+     * @return Le programme généré pour l'accès à la variable.
+     */
     @Override
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
         System.out.println("visitVariable");
@@ -550,7 +591,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
-
+    /**
+     * Visite un nœud d'initialisation de tableau dans l'arbre syntaxique.
+     * Génère le code pour initialiser un tableau.
+     * 
+     * @param ctx Le contexte d'initialisation du tableau.
+     * @return Le programme généré pour l'initialisation du tableau.
+     */
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
         System.out.println("visitTab_initialization");
@@ -598,6 +645,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
+
     @Override
     public Program visitAddition(grammarTCLParser.AdditionContext ctx) {
         System.out.println("visitAddition");
@@ -630,6 +678,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud de déclaration de type de base dans l'arbre syntaxique.
+     * Génère le code pour déclarer un type de base (int, bool, etc.).
+     * 
+     * @param ctx Le contexte de déclaration de type de base.
+     * @return Le programme généré pour la déclaration de type de base.
+     */
     @Override
     public Program visitBase_type(grammarTCLParser.Base_typeContext ctx) {
         System.out.println("visitBase_type");
@@ -644,6 +699,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud de déclaration de type de tableau dans l'arbre syntaxique.
+     * Génère le code pour déclarer un type de tableau.
+     * 
+     * @param ctx Le contexte de déclaration de type de tableau.
+     * @return Le programme généré pour la déclaration de type de tableau.
+     */
     @Override
     public Program visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
         System.out.println("visitTab_type");
@@ -672,6 +734,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud de déclaration de variable dans l'arbre syntaxique.
+     * Génère le code pour déclarer une variable.
+     * 
+     * @param ctx Le contexte de déclaration de variable.
+     * @return Le programme généré pour la déclaration de variable.
+     */
     @Override
     public Program visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
         System.out.println("visitDeclaration");
@@ -695,6 +764,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
      
+    /**
+     * Visite un nœud d'instruction print dans l'arbre syntaxique.
+     * Génère le code pour imprimer une valeur.
+     * 
+     * @param ctx Le contexte de l'instruction print.
+     * @return Le programme généré pour l'instruction print.
+     */
     @Override
     public Program visitPrint(grammarTCLParser.PrintContext ctx) {
         System.out.println("visitPrint");
@@ -711,6 +787,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
+    /**
+     * Visite un nœud d'assignation dans l'arbre syntaxique.
+     * Génère le code pour assigner une valeur à une variable.
+     * 
+     * @param ctx Le contexte d'assignation.
+     * @return Le programme généré pour l'assignation.
+     */
     @Override
     public Program visitAssignment(grammarTCLParser.AssignmentContext ctx) {
         System.out.println("visitAssignment");
@@ -730,6 +813,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud de bloc d'instructions dans l'arbre syntaxique.
+     * Génère le code pour un bloc d'instructions.
+     * 
+     * @param ctx Le contexte du bloc d'instructions.
+     * @return Le programme généré pour le bloc d'instructions.
+     */
     @Override
     public Program visitBlock(grammarTCLParser.BlockContext ctx) {
         System.out.println("visitBlock");
@@ -746,6 +836,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud d'instruction if dans l'arbre syntaxique.
+     * Génère le code pour une instruction conditionnelle if.
+     * 
+     * @param ctx Le contexte de l'instruction if.
+     * @return Le programme généré pour l'instruction if.
+     */
     @Override
     public Program visitIf(grammarTCLParser.IfContext ctx) {
         System.out.println("visitIf");
@@ -911,6 +1008,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return returnProgram;
     }
 
+    /**
+     * Visite un nœud de fonction de base dans l'arbre syntaxique.
+     * Génère le code pour une fonction de base.
+     * 
+     * @param ctx Le contexte de la fonction de base.
+     * @return Le programme généré pour la fonction de base.
+     */
     @Override
     public Program visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
         Program program = new Program();
@@ -939,6 +1043,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
 
+    /**
+     * Visite un nœud de déclaration de fonction dans l'arbre syntaxique.
+     * Génère le code pour déclarer une fonction.
+     * 
+     * @param ctx Le contexte de la déclaration de fonction.
+     * @return Le programme généré pour la déclaration de fonction.
+     */
     @Override
     public Program visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
         Program program = new Program();
@@ -976,6 +1087,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }    
 
+    /**
+     * Visite un nœud de fonction principale dans l'arbre syntaxique.
+     * Génère le code pour la fonction principale.
+     * 
+     * @param ctx Le contexte de la fonction principale.
+     * @return Le programme généré pour la fonction principale.
+     */
     @Override
     public Program visitMain(grammarTCLParser.MainContext ctx) {
         Program program = new Program();
