@@ -12,6 +12,7 @@ import Asm.Ret;
 import Asm.Stop;
 import Asm.UAL;
 import Asm.UALi;
+import Asm.Com;
 import Asm.CondJump;
 import Asm.IO;
 import Asm.Instruction;
@@ -227,6 +228,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitTab_access");
         Program program = new Program();
         // recuperer registre nom tableau
+        program.addInstruction(new Com("TabAccess"));
         program.addInstructions(visit(ctx.expr(0)));
         int tabAdress = registerCounter - 1;
 
@@ -241,25 +243,28 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new UALi(UALi.Op.ADD, reg8, 0, 8));
 
         int tailleTab = getNewRegister();
-        program.addInstruction(new UAL(UAL.Op.XOR, tailleTab, tailleTab, tailleTab));
         program.addInstruction(new Mem(Mem.Op.LD, tailleTab, tabAdress));
-        program.addInstruction(new UALi(UALi.Op.ADD,tabAdress,tabAdress,1));
+        program.addInstruction(new UALi(UALi.Op.ADD,tabAdress,tabAdress,1));//on prend le 1er element du tableau
         //on vérifie que l'index est bien dans le tableau
-        String tailleTabOK = generateNewLabel();
+        String tailleTabOK = generateNewLabel("TailleTabOK_");
+
+
 
         program.addInstruction(new CondJump(CondJump.Op.JINF, index, tailleTab, tailleTabOK));
         
         //on affiche une erreur
-        program.addInstruction(new IO(IO.Op.PRINT, 0));
-        program.addInstruction(new Ret());
+
+        int newReg = getNewRegister();
+        program.addInstruction(new UALi(UALi.Op.SUB, newReg, 0, 1));
+        program.addInstruction(new IO(IO.Op.PRINT, newReg));
+        program.addInstruction(new Stop());
 
         //on continue
-        String dansBonneSection = generateNewLabel();
-        
         int adresseCase = getNewRegister();
         //index - caseTab = adresseCase
         program.addInstruction(new UAL(tailleTabOK,UAL.Op.SUB, adresseCase, index, caseTab));
 
+        String dansBonneSection = generateNewLabel("SectionTabOK_");
         program.addInstruction(new CondJump(CondJump.Op.JINF, adresseCase, reg8, dansBonneSection));
 
         // on passe à la section suivante
@@ -269,9 +274,10 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new JumpCall(JumpCall.Op.JMP, tailleTabOK));
 
         //on est dans la bonne section
-        program.addInstruction(new Label(dansBonneSection));
-        program.addInstruction(new UAL(UAL.Op.ADD, tabAdress, tabAdress, adresseCase));
+        program.addInstruction(new UAL(dansBonneSection,UAL.Op.ADD, tabAdress, tabAdress, adresseCase));
+        //on ajoute ce qui manque pour arriver à la bonne case
 
+        program.addInstruction(new Com("Retour tab access:"));
         //on charge la valeur de la case dans le registre
         int rslt = getNewRegister();
         program.addInstruction(new Mem(Mem.Op.LD, rslt, tabAdress));
@@ -459,7 +465,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         int newReg = getNewRegister();
         // on récupère l'addresse du tableau 
         program.addInstruction(new UAL(UAL.Op.XOR, newReg, newReg, newReg));
-        program.addInstruction(new UALi(UALi.Op.ADD, newReg, newReg, registerCounter - 2));
+        program.addInstruction(new UAL(UAL.Op.ADD, newReg, newReg, registerCounter - 2));
         int size = getNewRegister();
         program.addInstruction(new UALi(UALi.Op.ADD, size, 0, ctx.expr().size()));
         program.addInstruction(new Mem(Mem.Op.ST, size, newReg));
@@ -523,7 +529,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program program = new Program();
 
         // Génère le code pour la déclaration du type de base
-        program.addInstruction(new Label("BASE_TYPE"));
+
 
         //c'est soit un int soit un bool, ou un auto...
 
@@ -845,11 +851,15 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new UAL(UAL.Op.XOR, 0, 0, 0));
         program.addInstruction(new UALi(UALi.Op.ADD, 1, 0, 1));
         program.addInstruction(new UAL(UAL.Op.XOR, 2, 2, 2));
+
+        program.addInstruction(new JumpCall(JumpCall.Op.CALL, "main"));
+        program.addInstruction(new Stop());
+
         program.addInstruction(new Label("main"));
         // Générer le code pour le corps de la fonction principale
         Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
         program.addInstructions(coreFunctionProgram);
-        program.addInstruction(new Stop());
+
 
         // Générer le code pour chaque déclaration de fonction
         for (grammarTCLParser.Decl_fctContext declContext : ctx.decl_fct()) {
