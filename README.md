@@ -2,13 +2,33 @@
 
 ## Groupe 1 : Inférence de types
 
+### Contributeurs
+
+- BLANCHÉ Thomas
+- EL GAMOUNE Elyes
+- TONNIS Dorian
+- MAHMOUD Fazia
+
+### Aperçu
+
+Le but de cette section est d’analyser le code source pour :
+- vérifier que le typage est correct (ou lever des erreurs si ce n’est pas le cas)
+- inférer le type (le plus général possible) des éléments déclarés en auto
+
+Les types utilisés dans ce projet sont ceux reconnus par le non-terminal type de la grammaire.
+Il s’agit donc d’entiers, de booléens, ou de tableaux d’un certain type.
+
+### Architecture
+
+La classe `Typervisitor` étend `AbstractParseTreeVisitor` et implémente `grammarTCLVisitor`. Elle est responsable de parcourir l'arbre syntaxique et d'inférer les types des éléments déclarés en auto. Elle utilise la classe abstracte `Type` pour représenter les types. Les classes `PrimitiveType`, `ArrayType`, `FunctionType` et `UnknownType` héritent de `Type` et représentent respectivement les types primitifs (int, bool), les tableaux, les fonctions et les types inconnus (utilisés pour les variables déclarées en auto et le nom des variables).
+
 ## Groupe 2 : Génération de Code
 
 ### Contributeurs
 
-- SYLVESTRE ANTONIN
+- SYLVESTRE Antonin
 - VITTORE Thomas
-- Ginhac Jules
+- GINHAC Jules
 
 ### Aperçu
 
