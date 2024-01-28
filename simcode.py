@@ -307,7 +307,7 @@ while PROG[CO] == [] or PROG[CO][0] != "STOP":
         REG[decodeREG(PROG[CO][1])] = readInt(fin)
         CO = CO + 1
     elif PROG[CO][0] == "PRINT":
-        fout.write(str(REG[decodeREG(PROG[CO][1])]))
+        fout.write(str(REG[decodeREG(PROG[CO][1])]) + '\n')
         CO = CO + 1
     # arret du programme
 
@@ -324,8 +324,6 @@ while PROG[CO] == [] or PROG[CO][0] != "STOP":
         fin.close()
         fout.close()
         sys.exit(0)
-
-
 
 
 

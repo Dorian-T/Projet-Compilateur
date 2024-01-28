@@ -153,7 +153,11 @@ fout = open("sorties.txt",'w')
 # EXECUTION
 # -------------------------------------------------
 
-while PROG[CO][0] != "STOP":
+while PROG[CO] == [] or PROG[CO][0] != "STOP":
+
+    if (PROG[CO] == []): # ligne vide
+        CO = CO + 1
+        continue
 
     if checkSyntaxe(PROG[CO],SYMB) == False:
         print("ERROR LINE",NUML[CO]+1)
@@ -297,7 +301,7 @@ while PROG[CO][0] != "STOP":
         REG[decodeREG(PROG[CO][1])] = readInt(fin)
         CO = CO + 1
     elif PROG[CO][0] == "PRINT":
-        fout.write(str(REG[decodeREG(PROG[CO][1])]))
+        fout.write(str(REG[decodeREG(PROG[CO][1])]) + '\n')
         CO = CO + 1
     # arret du programme
 
