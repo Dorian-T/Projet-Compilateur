@@ -1,6 +1,7 @@
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
@@ -101,13 +102,75 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitCall(grammarTCLParser.CallContext ctx) {
-        System.out.println(" - visit call : " + ctx.getChild(0).getText());
-        if(!this.types.containsKey(new UnknownType(ctx.getChild(0))))
+
+        // on verifie que la fonction existe
+        if (!this.types.containsKey(new UnknownType(ctx.getChild(0))))
             throw new UnsupportedOperationException("call sur fonction non déclarée");
 
-        Type type_fonction = this.types.get(new UnknownType(ctx.getChild(0)));
+        FunctionType type_fonction = (FunctionType) this.types.get(new UnknownType(ctx.getChild(0)));
 
-        throw new UnsupportedOperationException("Unimplemented method 'visitCall'"); //TODO:fonction-visitCall
+        // on recupere les arguments de l appel de fonction
+        ArrayList<Type> args_call = new ArrayList<Type>();
+        for (int i = 2; i < ctx.getChildCount() - 1; i += 2) {
+            args_call.add(visit(ctx.getChild(i)));
+        }
+
+        // on verifie que le nombre d'arguments est le meme que celui de la fonction
+        if (args_call.size() != type_fonction.getNbArgs())
+            throw new UnsupportedOperationException("Nombre d'arguments incorrect");
+
+        // on rassemble les arguments de l'appel avec ceux de la fonction (on fait juste une meme map pour les metre face a face)
+        Map<Type, Type> fusion_after_call = new HashMap<>();
+        for (int i = 0; i < args_call.size(); i++) {
+
+            if (containsVar(type_fonction.getArgsType(i)))
+                // si le type de l'argument contient une variable, on le met dans la map ... pour le traiter plus tard...
+                fusion_after_call.put(args_call.get(i), type_fonction.getArgsType(i));
+            else
+                // si le type de l'argument ne contient pas de variable, on le traite directement
+                addInTypesMap(args_call.get(i).unify(type_fonction.getArgsType(i)));
+        }
+        
+        // on simplifie un maximum notre map
+        Map<Type,UnknownType> fusion_after_call_term = fusion_after_call.entrySet().stream()
+                .map(entry -> {
+                    // on simplifie si il y a des ArrayType des deux cotés
+                    while (entry.getKey() instanceof ArrayType && entry.getValue() instanceof ArrayType) {
+                        ArrayType key = (ArrayType) entry.getKey();
+                        ArrayType value = (ArrayType) entry.getValue();
+
+                        entry = new HashMap.SimpleEntry<Type, Type>(key.getTabType(), value.getTabType());
+                    }
+                    
+                    // on gere le cas ou il y a un ArrayType a droite
+                    if(entry.getValue() instanceof ArrayType ){
+                        if(!(entry.getKey() instanceof UnknownType))
+                            throw new UnsupportedOperationException("Les types des arguments ne correspondent pas (tableau et Primitive_Type)");
+                        
+                        Type key = entry.getKey();
+                        Type value = entry.getValue();
+                        while(value instanceof ArrayType){
+                            key = new ArrayType(key);
+                            value = ((ArrayType)value).getTabType();
+                        }
+                        addInTypesMap((UnknownType)entry.getKey(), key);
+                        entry = new HashMap.SimpleEntry<Type, Type>(entry.getKey(),value);
+                    }
+                    // maintenant il ne reste plus que des UnknownType a droite
+                    
+                    return new HashMap.SimpleEntry<Type, UnknownType> (entry.getKey(), (UnknownType)entry.getValue());
+                }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        
+        // on echanger les key et value dans fusion_after_call_ret
+        Map<UnknownType, Type> fusion_after_call_ret = fusion_after_call_term.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+        
+        // on fait les substitutions et on envoye les resultats dans this.types
+        for(Entry<Type,UnknownType> entry : fusion_after_call_term.entrySet()){
+            addInTypesMap(entry.getKey().unify(entry.getValue().substituteAll(fusion_after_call_ret)));        
+        }
+
+        return type_fonction.getReturnType().substituteAll(fusion_after_call_ret);
     }
 
     @Override
@@ -144,7 +207,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         // les deux types doivent etre des entiers(les UnknownType ont été remplacés par
         // des entiers)
-        if (!(var1.equals(new Primitive_Type(Type.Base.BOOL)) && var2.equals(new Primitive_Type(Type.Base.BOOL))))
+        if (!(var1.equals(new Primitive_Type(Type.Base.INT)) && var2.equals(new Primitive_Type(Type.Base.INT))))
             throw new UnsupportedOperationException(
                     "Les types multipliés ( " + ctx.getChild(1).getText() + " ) ne sont pas des entiers");
 
@@ -169,7 +232,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
             else
                 typeretour = addInTypesMap(typeretour.unify(visit(ctx.getChild(i))), typeretour);
         }
-        return typeretour;
+        return new ArrayType(typeretour);
     }
 
     @Override
@@ -216,7 +279,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
         // on verifie si la variable existe deja dans le this.types
         if (this.types.containsKey(new UnknownType(ctx.getChild(1))))
-            throw new UnsupportedOperationException("Variable déjà déclarée");
+            throw new UnsupportedOperationException("Variable déjà déclarée (nom deja utilisé)");
 
         if (!containsVar(visit(ctx.getChild(0))))
             // si le type n'est pas auto, et ne contient aucun auto (tab de auto...)
@@ -261,7 +324,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         // on visite le premier fils pour initialiser typeretour.
         Type typeretour = visit(ctx.getChild(1));
 
-        // on visite les autres fils et on unifie les types de retour avec addInTypesMap !
+        // on visite les autres fils et on unifie les types de retour avec addInTypesMap
+        // !
         for (int i = 2; i < ctx.getChildCount() - 1; i++) {
             if (typeretour != null)
                 typeretour = addInTypesMap(typeretour.unify(typeretour), visit(ctx.getChild(i)));
@@ -305,14 +369,14 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
 
     @Override
     public Type visitFor(grammarTCLParser.ForContext ctx) {
-        
+
         // on visite la declaration
         visit(ctx.getChild(2));
         // on visite la condition
         visit(ctx.getChild(4));
         // on visite l'incrementation
         visit(ctx.getChild(6));
-        
+
         // on visite le bloc et on retourne le type de retour possiblement null.
         return visit(ctx.getChild(8));
     }
@@ -327,34 +391,71 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         // il faut verifier que le type de retour est le meme que celui de l'expression
         // il faut retourner le type de l'unification des types des return...
 
-        Type returnType = visit(ctx.getChild(ctx.getChildCount() - 3));
+        Type returnType = null;
 
         for (int i = 1; i < ctx.getChildCount() - 4; i++) {
-
-            returnType = addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
+            if (returnType == null)
+                returnType = visit(ctx.getChild(i));
+            else
+                returnType = addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
         }
+        if (returnType == null)
+            returnType = visit(ctx.getChild(ctx.getChildCount() - 3));
+        else
+            returnType = addInTypesMap(returnType.unify(visit(ctx.getChild(ctx.getChildCount() - 3))), returnType);
         return returnType; // Retroune les types de retour
     }
 
     @Override
     public Type visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
 
-        // TODO:fonction
+        // type VAR '(' (type VAR (',' type VAR)*)? ')' core_fct;
 
-        ArrayList<Type> args = new ArrayList<Type>();
+        // on gere les types retours grace a ce qui remonte de core_fct et on les unifie
+        // avec le type de retour de la fonction
+        Type type_retour = visit(ctx.getChild(0));
+
+        // on gere les types des parametres en sauvgardant leur nom dans une liste pour
+        // les
+        ArrayList<Type> nom_args = new ArrayList<Type>();
+
         for (int i = 3; i < ctx.getChildCount() - 2; i += 3) {
 
-            System.out.println(" - parametre : " + ctx.getChild(i).getText());
+            System.out.println(" - parametre : " + ctx.getChild(i).getText() + " : " + ctx.getChild(i + 1).getText());
+            nom_args.add(new UnknownType(ctx.getChild(i + 1)));
 
-            args.add(visit(ctx.getChild(i)));
+            if (this.types.containsKey(new UnknownType(ctx.getChild(i + 1))))
+                throw new UnsupportedOperationException(
+                        "Variable déjà déclarée (parametres de fonction) (nom deja utilisé)");
+
+            if (!containsVar(visit(ctx.getChild(i))))
+                // si le type n'est pas auto, et ne contient aucun auto (tab de auto...)
+                this.types.put(new UnknownType(ctx.getChild(i + 1)), visit(ctx.getChild(i)));
+            else
+                // sinon on prend le type et on remplace les auto par des #[nom de la variable].
+                this.types.put(new UnknownType(ctx.getChild(i + 1)),
+                        visit(ctx.getChild(i)).substitute(new UnknownType(),
+                                new UnknownType("#" + ctx.getChild(i + 1).getText())));
         }
 
-        this.types.put(new UnknownType(ctx.getChild(1)), new FunctionType(visit(ctx.getChild(0)), args));
+        Type type_retour_cor_fct = visit(ctx.getChild(ctx.getChildCount() - 1));
 
-        Type type_retour = visit(ctx.getChild(ctx.getChildCount() - 1)); // on visite ensuite le bloc de la fonction
-        Type type_retour_fonction = ((FunctionType) this.types.get(new UnknownType(ctx.getChild(1)))).getReturnType();
-        type_retour_fonction.unify(type_retour);
+        System.out.println("   - type retour : " + type_retour);
+        System.out.println("   - type retour core_fct : " + type_retour_cor_fct);
+        type_retour = type_retour.substituteAll(type_retour.unify(type_retour_cor_fct)); // on visite ensuite le bloc de
+                                                                                         // la fonction
+        System.out.println(" - type retour final: " + type_retour);
 
+        ArrayList<Type> types_args = new ArrayList<Type>();
+        for (int i = 0; i < nom_args.size(); i++) {
+            types_args.add(this.types.get(nom_args.get(i)));
+        }
+
+        if (this.types.containsKey(new UnknownType(ctx.getChild(1)))) {
+            throw new UnsupportedOperationException("Fonction déjà déclarée (nom deja utilisé)");
+        }
+
+        this.types.put(new UnknownType(ctx.getChild(1)), new FunctionType(type_retour, types_args));
         return null; // on ne retourne rien
     }
 
@@ -386,21 +487,29 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return null;
     }
 
-    // appelle clasique de cette fonction : 
-    // returnType = this.addInTypesMap(returnType.unify(visit(ctx.getChild(i))), returnType);
+    // appelle clasique de cette fonction :
+    // returnType = this.addInTypesMap(returnType.unify(visit(ctx.getChild(i))),
+    // returnType);
     // => si mopdifMap est null, on ne fait rien... (pas de changement)
-    // => si returnType n'est pas null, on le met a jour avec modifMap puis this.types
-    // => on ajoute modifMap a this.types (souvent en provenance d'un unify entre deux type de variable)
+    // => si returnType n'est pas null, on le met a jour avec modifMap puis
+    // this.types
+    // => on ajoute modifMap a this.types (souvent en provenance d'un unify entre
+    // deux type de variable)
     // => on met a jour tout les types de this.types avec les changements
     // => on verifie qu'il n'y a pas de boucle infinie
-    // => on supprime les variables de fin de tableau grace a une lambda expression !!!
+    // => on supprime les variables de fin de tableau grace a une lambda expression
+    // !!!
     public Type addInTypesMap(Map<UnknownType, Type> modifMap, Type returnType) {
+        System.out.println(" Ma Map dfe BOLOOOOOOOOVAZAAAAA : " + this.types);
+        // System.out.println(" - addInTypesMap : " + modifMap + " : " + returnType + "
+        // : " + this.types);
 
         if (modifMap == null) // s il n'y a pas eu de changement
             return returnType;
 
-        // on fait les substitutions dans returnType pour le mettre a jour et le return a la fin
-        if(returnType != null){
+        // on fait les substitutions dans returnType pour le mettre a jour et le return
+        // a la fin
+        if (returnType != null) {
             returnType = returnType.substituteAll(modifMap);
             returnType = returnType.substituteAll(this.types);
         }
@@ -408,7 +517,8 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         // on ajoute les changements dans this.types
         this.types.putAll(modifMap);
 
-        // on fait les substitutions dans this.types pour metre a jour tout les types concernés
+        // on fait les substitutions dans this.types pour metre a jour tout les types
+        // concernés
         for (UnknownType key : this.types.keySet()) {
 
             this.types.put(key, this.types.get(key).substituteAll(this.types));
@@ -425,16 +535,19 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return returnType;
     }
 
-    // addInTypesMap pour seulement modifier this.types sans besoin de garder le type entré en parametre
-    // comme pour les unification avec des accesseurs de tableau : 
-    // a = INT[][][]  et b = #b
-    // si on fait b = a[0][0] on appelle addInTypesMap(a[0][0].unify(b)) et on ne veut pas garder le type de a[0][0] car on ne l'utilise pas,
+    // addInTypesMap pour seulement modifier this.types sans besoin de garder le
+    // type entré en parametre
+    // comme pour les unification avec des accesseurs de tableau :
+    // a = INT[][][] et b = #b
+    // si on fait b = a[0][0] on appelle addInTypesMap(a[0][0].unify(b)) et on ne
+    // veut pas garder le type de a[0][0] car on ne l'utilise pas,
     // on stocke deja le type de b et de a dans this.types. Ce qui est suffisant.
     public void addInTypesMap(Map<UnknownType, Type> modifMap) {
         addInTypesMap(modifMap, null);
     }
 
-    // addInTypesMap permettant de ne pas avoir a creer une map pour ajouter un seul element...
+    // addInTypesMap permettant de ne pas avoir a creer une map pour ajouter un seul
+    // element...
     public void addInTypesMap(UnknownType key, Type value) {
         Map<UnknownType, Type> map = new HashMap<UnknownType, Type>();
         map.put(key, value);
@@ -451,8 +564,10 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         return false;
     }
 
-    // verifie si il y a une boucle infinie dans les types du genre : { #a=[][][]#a }
-    // ne detecte pas petite boucle : { #a=[][]#a } car elle sont necessaire pour les cas ou on transforme un tableau en tableau de tableau...
+    // verifie si il y a une boucle infinie dans les types du genre : { #a=[][][]#a
+    // }
+    // ne detecte pas petite boucle : { #a=[][]#a } car elle sont necessaire pour
+    // les cas ou on transforme un tableau en tableau de tableau...
     public void verifBoucleInfini() {
         for (Entry<UnknownType, Type> entry : this.types.entrySet()) {
             if (entry.getValue().contains(entry.getKey()) && entry.getValue() instanceof ArrayType) {
@@ -473,11 +588,7 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         }
     }
 
-
-
-    
     // ancinne version de addInTypesMap : (plusieurs tentatives)
-
 
     // public void join(Map<UnknownType,Type> h){
     // if(h == null){

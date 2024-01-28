@@ -100,6 +100,9 @@ public class UnknownType extends Type {
             return resultat;
         }
         
+        if (t == null) {
+            return null;
+        }
         return t.unify(this);
     }
 

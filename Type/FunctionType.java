@@ -43,21 +43,26 @@ public class FunctionType extends Type {
 
     @Override
     public Map<UnknownType, Type> unify(Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'unify'");
+        throw new UnsupportedOperationException("unify whith FunctionType ????? ok but NO !");
     }
 
     @Override
     public boolean equals(Object t) {
-        return (t instanceof FunctionType)
-            && (((FunctionType)t).getReturnType().equals(this.returnType))
-            && (((FunctionType)t).getNbArgs() == this.getNbArgs());
+        if(!(t instanceof FunctionType))
+            return false;
+        if(!(((FunctionType)t).getReturnType().equals(this.returnType)))
+            return false;
+        if(((FunctionType)t).getNbArgs() != this.getNbArgs())
+            return false;
+        for(int i = 0; i < this.getNbArgs(); i++)
+            if(!(((FunctionType)t).getArgsType(i).equals(this.getArgsType(i))))
+                return false;
+        return true;
     }
 
     @Override
     public Type substitute(UnknownType v, Type t) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'substitute'");
+        return this;
     }
 
     @Override
