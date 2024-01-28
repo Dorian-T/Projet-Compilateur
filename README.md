@@ -39,7 +39,7 @@ Le but de cette section est de générer, à partir du code assembleur du groupe
 
 ### Architecture
 
-'Graph' - 'UnorientedGraph' - 'OrientedGraph'
+`Graph` - `UnorientedGraph` - `OrientedGraph`
 
 ### Fonctionnalités Principales
 
