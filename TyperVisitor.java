@@ -296,13 +296,14 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
             addInTypesMap(this.types.get(new UnknownType(ctx.getChild(1))).unify(visit(ctx.getChild(3))));
         }
 
-        // aucun retrun possible.
+        // aucun return possible.
         return null;
     }
 
     @Override
     public Type visitPrint(grammarTCLParser.PrintContext ctx) {
-        visitChildren(ctx);
+        if(!this.types.containsKey(new UnknownType(ctx.getChild(2))))
+            throw new UnsupportedOperationException("Variable non déclarée");
         return null;
     }
 
