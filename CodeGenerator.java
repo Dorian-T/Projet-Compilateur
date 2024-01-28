@@ -34,7 +34,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     /**
      * Table de correspondance entre les types inconnus et leurs types réels.
      */
-    private Map<UnknownType,Type> types;
+    private Map<String,Type> types;
 
     /**
      * Compteur pour générer des numéros de registre uniques.
@@ -58,14 +58,18 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      * @param types Map associant à chaque type inconnu son type réel.
      */
     public CodeGenerator(Map<UnknownType, Type> types) {
-        this.types = types;
+        this.types = new HashMap<>();
+        for (Map.Entry<UnknownType, Type> entry : types.entrySet()) {
+            this.types.put(entry.getKey().toString(), entry.getValue());
+        }
+
         this.registerCounter = 3;
         this.variableTable = new java.util.HashMap<String, Integer>();
         this.labelCounter = 0;
     }
 
     /**
-     * Affiche toutes les variables et leurs valeurs actuelles.
+     * Affiche toutes les variables et le registre dans lequel elles sont.
      */
     public void afficherVariable() {
         System.out.println("Affichage des variables : ");
@@ -107,7 +111,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      * @return La nouvelle adresse mémoire.
      */
     private int generateNewAddress() {
-        return variableTable.size() + 1;
+        return getNewRegister() + 1;
     }
 
     /**
@@ -120,21 +124,18 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     }
 
     /**
-     * Génère une nouvelle étiquette unique basée sur un type donné.
+     * Génère un nouveau label qu'on peut commenter
      * 
-     * @param type Le type pour nommer l'étiquette.
+     * @param Commentaire Le type pour nommer l'étiquette.
      * @return La nouvelle étiquette.
      */
-    public String generateNewLabel(String type) {
-        return type + "_LABEL_" + labelCounter++;
+    public String generateNewLabel(String Commentaire) {
+        return Commentaire + "_LABEL_" + labelCounter++;
     }
 
-    public void addTypeMapping(UnknownType unknown, Type realType) {
-        types.put(unknown, realType);
-    }
     
-    public Type getType(UnknownType unknown) {
-        return types.getOrDefault(unknown, unknown); // Retourne le type réel ou le UnknownType si non trouvé
+    public Type getType(String var) {
+        return types.get(var); // Retourne le type réel
     }
     
     
@@ -155,13 +156,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(exprProgram);
         int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
 
-        // Vérifier le type de l'expression
-        Type exprType = getType(new UnknownType(ctx.expr().getText()));
-        
-        // Si exprType n'est pas un type booléen
-        if (!(exprType.equals(new Primitive_Type(Type.Base.BOOL)))) { 
-            throw new RuntimeException("Opération de négation non valide sur le type non booléen : " + exprType);
-        }
         // Créer une étiquette pour le cas où l'expression est fausse (et donc la négation vraie)
         String trueLabel = generateNewLabel();
     
@@ -199,13 +193,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(rightProgram);
         int rightReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de la seconde expression
     
-        // Vérifier le type des deux expressions
-        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
-        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
-        if (!leftType.equals(rightType)) {
-            throw new RuntimeException("Types incompatibles pour la comparaison: " + leftType + " et " + rightType);
-        }
-        
         // Utiliser un nouveau registre à 0 pour le résultat de la comparaison
         int resultReg = getNewRegister();
         program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
@@ -258,13 +245,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(rightProgram);
         int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
 
-        // Vérifier le type des deux expressions
-        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
-        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
-        if (!(leftType.equals(new Primitive_Type(Type.Base.BOOL)) && rightType.equals(new Primitive_Type(Type.Base.BOOL)))) {
-            throw new RuntimeException("Opération OR non valide sur des types non booléens: " + leftType + " et " + rightType);
-        }
-
         // Utiliser un nouveau registre pour le résultat de l'opération OR
         int resultReg = getNewRegister();
         
@@ -308,15 +288,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program exprProgram = visit(ctx.expr());
         program.addInstructions(exprProgram);
         int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
-        
-        // Vérifier le type de l'expression
-        Type exprType = getType(new UnknownType(ctx.expr().getText()));
-
-        // Si exprType n'est pas un type entier
-        if (!(exprType.equals(new Primitive_Type(Type.Base.INT)))) { 
-            // Gestion de l'erreur de type
-            throw new RuntimeException("Opération d'opposition non valide sur le type non entier : " + exprType);
-        }
         
         // Utiliser un nouveau registre pour le résultat de l'opération d'opposition
         int resultReg = getNewRegister();
@@ -379,8 +350,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new UALi(UALi.Op.ADD,tabAdress,tabAdress,1));//on prend le 1er element du tableau
         //on vérifie que l'index est bien dans le tableau
         String tailleTabOK = generateNewLabel("TailleTabOK_");
-
-
 
         program.addInstruction(new CondJump(CondJump.Op.JINF, index, tailleTab, tailleTabOK));
         
@@ -517,13 +486,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program rightProgram = visit(ctx.expr(1));
         program.addInstructions(rightProgram);
         int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
-    
-        // Vérifier le type des deux expressions
-        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
-        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
-        if (!(leftType.equals(new Primitive_Type(Type.Base.BOOL)) && rightType.equals(new Primitive_Type(Type.Base.BOOL)))) {
-            throw new RuntimeException("Opération OR non valide sur des types non booléens: " + leftType + " et " + rightType);
-        }
 
         // Utiliser un nouveau registre initialisé à 0 pour le résultat de l'opération AND
         int resultReg = getNewRegister();
@@ -557,17 +519,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Récupérer le nom de la variable depuis le contexte
         String varName = ctx.getText();
     
-        // Créer un UnknownType basé sur le nom de la variable
-        UnknownType unknownType = new UnknownType(varName);
-    
-        // Obtenir le type réel associé à ce UnknownType, s'il est connu
-        Type realType = getType(unknownType);
-    
-        // Si le type réel n'est pas connu
-        if (realType instanceof UnknownType) {
-            throw new RuntimeException("Type inconnu pour la variable " + varName);
-        }
-    
         // Récupérer l'adresse de la variable
         int varAddress = getVariableAddress(varName);
     
@@ -597,13 +548,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program rightExprProgram = visit(ctx.expr(1));
         int sr2 = registerCounter - 1;
 
-        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
-        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
-
-        // Vérifier si les types sont compatibles pour une opération de multiplication
-        if (!leftType.equals(new Primitive_Type(Type.Base.INT)) || !rightType.equals(new Primitive_Type(Type.Base.INT))) {
-            throw new RuntimeException("Types incompatibles pour la multiplication: " + leftType + " et " + rightType);
-        }
         // Génère le code assembleur pour l'opération de multiplication
         int destRegister = getNewRegister();
         program.addInstructions(leftExprProgram);
@@ -643,14 +587,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(rightExprProgram);
         int sr2 = registerCounter - 1;
 
-        // Récupérer les types des expressions
-        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
-        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
-
-        // Vérifier si les types sont compatibles pour une opération d'égalité
-        if (!leftType.equals(rightType)) {
-            throw new RuntimeException("Types incompatibles pour la comparaison: " + leftType + " et " + rightType);
-        }
         
         // Génère le code assembleur pour l'opération d'égalité
         int destRegister = getNewRegister();
@@ -752,16 +688,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         Program rightExprProgram = visit(ctx.expr(1));
         int sr2 = registerCounter - 1;
-        
-        // Vérifier le type des sous-expressions
-        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
-        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
-
-        // Vérifier si les types sont compatibles pour l'addition
-        if (!leftType.equals(rightType)) {
-            // Gestion de l'erreur de type
-            throw new RuntimeException("Type incompatibles pour l'addition: " + leftType + " et " + rightType);
-        }
 
         // Ajoute les instructions générées pour les expressions à additionner
         program.addInstructions(leftExprProgram);
@@ -857,14 +783,24 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // on déclare la variable dans la table des variables
         variableTable.put(ctx.VAR().getText(), destRegister);
         
-        //on gère les tableaux (visit le type) et retourne l'adresse du tableau
-        program.addInstructions(visit(ctx.type()));
-        //on met l'adresse du tableau dans le registre
-        program.addInstruction(new UAL(UAL.Op.ADD, destRegister, registerCounter - 1, 0));
 
+        //on gère les tableaux 
+        if (getType(ctx.VAR().getText()) instanceof Primitive_Type) {
+            //on met 0 dans le registre
+            program.addInstruction(new UAL(UAL.Op.XOR, destRegister, 0, 0));
+            
+        }
+        else // tableaux
+        {
+            //on gère les tableaux (visit le type) et retourne l'adresse du tableau
+            program.addInstructions(visit(ctx.type()));
+            //on met l'adresse du tableau dans le registre
+            program.addInstruction(new UAL(UAL.Op.ADD, destRegister, registerCounter - 1, 0));
+        }
 
 
         if (ctx.expr() == null) return program;
+        // si on a une expression , on doit l'évaluer et mettre le résultat dans la variable
         
         program.addInstructions(visit(ctx.expr()));
        
@@ -888,9 +824,12 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Récupérer le nom de la variable à imprimer
         String varName = ctx.VAR().getText();
         
+        afficherVariable();
+
         // Récupérer le registre ou l'adresse associée à la variable
         int varAddress = variableTable.get(varName);
 
+        
         program.addInstruction(new IO(IO.Op.PRINT, varAddress));
 
         return program;
@@ -920,13 +859,12 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         int regVarAssignee = getVariableAddress(ctx.VAR().getText());
 
         //cas variable simple
-        if (ctx.expr().size() == 1) {
+        if (getType(ctx.VAR().getText()) instanceof Primitive_Type) {
             //on assigne la valeur de l'expression à la variable
             program.addInstruction(new UAL(UAL.Op.ADD, regVarAssignee, source, 0));
             program.addInstruction(new Com("End Assignment"));
             return program;
         }
-
         //cas tableau --------------------------------------------------------------------------------------
 
         int reg8 = getNewRegister();
@@ -1309,6 +1247,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             //on ajoute les arguments dans la table des variables
             int newReg = getNewRegister();
             variableTable.put(ctx.VAR(i).getText(), newReg);
+            //on met le type de la variable dans la hashmap
+
 
 
             //on empile l'argument
