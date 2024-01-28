@@ -438,9 +438,9 @@ public class TyperVisitor extends AbstractParseTreeVisitor<Type> implements gram
         }
 
         Type type_retour_cor_fct = visit(ctx.getChild(ctx.getChildCount() - 1));
-
-        type_retour = type_retour.substituteAll(type_retour.unify(type_retour_cor_fct)); // on visite ensuite le bloc de
-                                                                                         // la fonction
+        if (type_retour.unify(type_retour_cor_fct) != null)
+            type_retour = type_retour.substituteAll(type_retour.unify(type_retour_cor_fct)); // on visite ensuite le bloc de
+                                                                                            // la fonction
         ArrayList<Type> types_args = new ArrayList<Type>();
         for (int i = 0; i < nom_args.size(); i++) {
             types_args.add(this.types.get(nom_args.get(i)));
