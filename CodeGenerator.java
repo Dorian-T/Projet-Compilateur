@@ -133,12 +133,17 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return Commentaire + "_LABEL_" + labelCounter++;
     }
 
-    
+    /**
+     * Récupère le type réel associé au nom d'une variable.
+     * Cette méthode est utilisée pour obtenir le type d'une variable à partir de son nom.
+     *
+     * @param var  Le nom de la variable dont on souhaite obtenir le type.
+     * @return     Le type réel associé à la variable, ou null si la variable n'est pas trouvée.
+     */
     public Type getType(String var) {
         return types.get(var); // Retourne le type réel
     }
-    
-    
+
     /**
      * Visite un nœud de négation dans l'arbre syntaxique.
      * Génère le code pour nier une expression.
@@ -529,7 +534,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         return program;
     }
     
-
     /**
      * Visite un nœud de multiplication dans l'arbre syntaxique.
      * Génère le code pour multiplier, diviser ou effectuer un modulo entre deux expressions.
@@ -726,7 +730,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         //c'est soit un int soit un bool, ou un auto...
 
-
         return program;
     }
 
@@ -782,7 +785,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         int destRegister = getNewRegister();
         // on déclare la variable dans la table des variables
         variableTable.put(ctx.VAR().getText(), destRegister);
-        
 
         //on gère les tableaux 
         if (getType(ctx.VAR().getText()) instanceof Primitive_Type) {
@@ -797,7 +799,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             //on met l'adresse du tableau dans le registre
             program.addInstruction(new UAL(UAL.Op.ADD, destRegister, registerCounter - 1, 0));
         }
-
 
         if (ctx.expr() == null) return program;
         // si on a une expression , on doit l'évaluer et mettre le résultat dans la variable
@@ -829,7 +830,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Récupérer le registre ou l'adresse associée à la variable
         int varAddress = variableTable.get(varName);
 
-        
         program.addInstruction(new IO(IO.Op.PRINT, varAddress));
 
         return program;
@@ -847,7 +847,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         System.out.println("visitAssignment");
         Program program = new Program();
         program.addInstruction(new Com("Assignment"));
-
 
         // trouve la valeur à assigner en visitan expression dans TYPE[trucs] = expression 
         Program expressionProgram = visit(ctx.expr(ctx.expr().size() - 1));
@@ -885,8 +884,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             int NbSectionIndex = getNewRegister();
             int reste = getNewRegister();
     
-
-
             //récupère la taille du tableau
             int nbSectionTab = getNewRegister();
             int realTailleTab = getNewRegister();
@@ -912,13 +909,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             program.addInstruction(new UALi(UALi.Op.DIV, NbSectionIndex, reste, 8));
             //on a le nombre de cases mémoires à réserver pour le tableau
 
-        
-
-
-
-
-
-
             //si le nombre de sections de l'index est supérieur au nombre de sections du tableau, on augmente la taille du tableau
             String tabTropPetit = generateNewLabel("tab_trop_petit");
             String TailleTabOK = generateNewLabel("TailleTabOK_");
@@ -937,7 +927,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
                     program.addInstruction(new JumpCall(JumpCall.Op.JMP, itererDansTab2));
             
-                
             // ---------------------------- on va à la dernière section déclarée du tableau - ----------------------------
             program.addInstruction(new Label(tabTropPetit));
             String tailleTabPasOK = generateNewLabel("TailleTabPasOK_");
@@ -950,8 +939,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
                 program.addInstruction(new Mem(Mem.Op.LD, tabIterator, tabIterator));
                 
                 program.addInstruction(new JumpCall(JumpCall.Op.JMP, itererDansTab));
-                
-
             
             // ---------------------------- on déclare les cases comme il faut (au moins 1 passage) - ----------------------------
                 program.addInstruction(new Label(tailleTabPasOK));
@@ -967,7 +954,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
       
                 program.addInstruction(new UALi(UALi.Op.ADD, nbSectionTab, nbSectionTab, 1));//il y a une section de plus
                 program.addInstruction(new CondJump(CondJump.Op.JINF, nbSectionTab, NbSectionIndex, tailleTabPasOK));
-
     
             // ------------ on est dans la bonne section, on peut prendre l'adresse de la bonne case ------------
             program.addInstruction(new Label(TailleTabOK));
@@ -979,9 +965,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             program.addInstruction(new UAL(UAL.Op.ADD, tabIterator, tabIterator, reste));
 
         }
-
-
-
 
         //on assigne la valeur de l'expression à la case du tableau
         program.addInstruction(new Mem(Mem.Op.ST, source, tabIterator));
@@ -1065,7 +1048,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             //pas de else, on sort du if
             program.addInstruction(new Label(Label1));
         }
-
 
         return program;
     }
@@ -1173,7 +1155,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitReturn(grammarTCLParser.ReturnContext ctx) {
         System.out.println("visitReturn");
 
-        
         // Créer un programme pour la valeur de retour
         Program returnProgram = visit(ctx.expr());
         // visit(expr) pose le résultat dans le dernier registre utilisé
@@ -1249,8 +1230,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
             variableTable.put(ctx.VAR(i).getText(), newReg);
             //on met le type de la variable dans la hashmap
 
-
-
             //on empile l'argument
             program.addInstruction(new Mem(Mem.Op.LD, newReg, 2));
             program.addInstruction(new UALi(UALi.Op.SUB, 2,2,1));
@@ -1262,7 +1241,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         // Ajouter l'instruction RET
         program.addInstruction(new Ret());
-
 
         return program;
     }    
@@ -1289,7 +1267,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         // Générer le code pour le corps de la fonction principale
         Program coreFunctionProgram = visitCore_fct(ctx.core_fct());
         program.addInstructions(coreFunctionProgram);
-
 
         // Générer le code pour chaque déclaration de fonction
         for (grammarTCLParser.Decl_fctContext declContext : ctx.decl_fct()) {
