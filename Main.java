@@ -32,7 +32,7 @@ public class Main {
         }
 
         // rappel du fichier + initialisation du lexer et du parser
-        System.out.println("input :  \n " + input.toString());
+        System.out.println("input :  \n " + input.toString() + "\n");
         grammarTCLLexer lexer = new grammarTCLLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         grammarTCLParser parser = new grammarTCLParser(tokens);
@@ -41,6 +41,7 @@ public class Main {
         // -----------------GROUPE 1 : TyperVisitor-----------------
 
         TyperVisitor typer = new TyperVisitor();
+        typer.debug = false; // passer à true pour afficher les modifications de la map pas à pas
         typer.visit(tree);
 
         // -----------------GROUPE 2 : CodeGenerator-----------------
@@ -57,7 +58,7 @@ public class Main {
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String ligne;
-            String labelEnCours = ""; 
+            String labelEnCours = "";
 
             while ((ligne = br.readLine()) != null) {
                 ligne = ligne.trim();
@@ -67,13 +68,13 @@ public class Main {
                 }
 
                 if (ligne.endsWith(":")) {
-                    labelEnCours = ligne; 
+                    labelEnCours = ligne;
                     continue;
                 }
 
                 if (!labelEnCours.isEmpty()) {
                     ligne = labelEnCours + " " + ligne;
-                    labelEnCours = ""; 
+                    labelEnCours = "";
                 }
 
                 instructions.add(ligne);
@@ -135,7 +136,7 @@ public class Main {
         System.out.println("Nombre de couleurs utilisées pour la coloration: " + nombreDeCouleurs);
         // Obtenir la coloration pour chaque registre
         HashMap<Integer, Integer> colorationRegistres = new HashMap<>();
-        for (int i = 0; i < nombreDeCouleurs; i++) { 
+        for (int i = 0; i < nombreDeCouleurs; i++) {
             colorationRegistres.put(i, grapheConflit.getColor(i));
         }
 
