@@ -22,46 +22,61 @@ public class Variables {
 
     private void calculateVariables() {
         for (String instr : instructions) {
+            if (instr.trim().startsWith("#")) continue;
             Set<Integer> genVars = new HashSet<>();
             Set<Integer> killVars = new HashSet<>();
             String[] parts = instr.split("\\s+");
-            if (parts.length < 2) continue; // Skip labels and empty lines
-
-            int startIndex = parts[0].endsWith(":") ? 1 : 0; // Skip label if present
+            if (parts.length < 2) continue;
+    
+            int startIndex = parts[0].endsWith(":") ? 1 : 0;
             String opcode = parts[startIndex];
-
+    
             switch (opcode) {
                 case "LD":
-                    // Format: LD Rdest Rsrc
-                    genVars.add(extractRegister(parts[startIndex + 2])); // Ajout du registre source
-                    killVars.add(extractRegister(parts[startIndex + 1])); // Ajout du registre destination
+                    genVars.add(extractRegister(parts[startIndex + 1])); 
+                    killVars.add(extractRegister(parts[startIndex + 2])); 
                     break;
-                case "XOR":
+                case "ST":
+                    killVars.add(extractRegister(parts[startIndex + 1])); 
+                    genVars.add(extractRegister(parts[startIndex + 2])); 
+                    break;
                 case "ADD":
-                    killVars.add(extractRegister(parts[startIndex + 1]));
-                    genVars.add(extractRegister(parts[startIndex + 2]));
-                    genVars.add(extractRegister(parts[startIndex + 3]));
-                    break;
                 case "SUB":
-                    killVars.add(extractRegister(parts[startIndex + 1]));
-                    genVars.add(extractRegister(parts[startIndex + 2]));
-                    genVars.add(extractRegister(parts[startIndex + 3]));
+                case "MUL":
+                case "DIV":
+                case "MOD":
+                case "XOR":
+                case "AND":
+                case "OR":
+                case "SL":
+                case "SR":
+                    killVars.add(extractRegister(parts[startIndex + 1])); 
+                    genVars.add(extractRegister(parts[startIndex + 2])); 
+                    genVars.add(extractRegister(parts[startIndex + 3])); 
                     break;
                 case "ADDi":
                 case "SUBi":
                     killVars.add(extractRegister(parts[startIndex + 1]));
-                    genVars.add(extractRegister(parts[startIndex + 2]));
+                    genVars.add(extractRegister(parts[startIndex + 2])); 
+                    break;
+                case "JMP":
+                case "CALL":
                     break;
                 case "JSUP":
-                case "JEQU":
                 case "JINF":
+                case "JEQU":
                 case "JNEQ":
-                    genVars.add(extractRegister(parts[startIndex + 1]));
-                    genVars.add(extractRegister(parts[startIndex + 2]));
+                case "JIEQ":
+                case "JSEQ":
+                    genVars.add(extractRegister(parts[startIndex + 1])); 
+                    genVars.add(extractRegister(parts[startIndex + 2])); 
                     break;
-                // Ajoutez d'autres cas au besoin
+                case "RET":
+                    break;
+                default:
+                    break;
             }
-
+    
             generatedVariables.put(instr, genVars);
             killedVariables.put(instr, killVars);
         }
@@ -78,6 +93,7 @@ public class Variables {
         do {
             changed = false;
             for (String instr : instructions) {
+                if (instr.trim().startsWith("#")) continue;
                 Set<Integer> newLVEntry = new HashSet<>(lvExit.getOrDefault(instr, new HashSet<>()));
                 newLVEntry.removeAll(killedVariables.getOrDefault(instr, new HashSet<>()));
                 newLVEntry.addAll(generatedVariables.getOrDefault(instr, new HashSet<>()));
@@ -104,7 +120,7 @@ public class Variables {
         if (reg.matches("R\\d+")) {
             return Integer.parseInt(reg.substring(1));
         } else {
-            return -1; // Return -1 if it's not a register
+            return -1; 
         }
     }
 
@@ -130,10 +146,10 @@ public class Variables {
                 Set<Integer> killVars = killedVariables.getOrDefault(instr, new HashSet<>());
 
                 if (genVars.contains(reg) || killVars.contains(reg)) {
-                    return true; // Le registre est utilisé ou défini dans une autre instruction
+                    return true; 
                 }
             }
         }
-        return false; // Le registre n'est pas utilisé ou défini ailleurs
+        return false;
     }
 }
