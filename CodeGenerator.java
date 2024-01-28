@@ -21,6 +21,7 @@ import Asm.Mem;
 import Asm.Label;
 import Type.Type;
 import Type.UnknownType;
+import Type.Primitive_Type;
 import grammarTCLParser.InstrContext;
 
 /**
@@ -127,6 +128,15 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public String generateNewLabel(String type) {
         return type + "_LABEL_" + labelCounter++;
     }
+
+    public void addTypeMapping(UnknownType unknown, Type realType) {
+        types.put(unknown, realType);
+    }
+    
+    public Type getType(UnknownType unknown) {
+        return types.getOrDefault(unknown, unknown); // Retourne le type réel ou le UnknownType si non trouvé
+    }
+    
     
     /**
      * Visite un nœud de négation dans l'arbre syntaxique.
@@ -145,6 +155,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(exprProgram);
         int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
 
+        // Vérifier le type de l'expression
+        Type exprType = getType(new UnknownType(ctx.expr().getText()));
+        
+        // Si exprType n'est pas un type booléen
+        if (!(exprType.equals(new Primitive_Type(Type.Base.BOOL)))) { 
+            throw new RuntimeException("Opération de négation non valide sur le type non booléen : " + exprType);
+        }
         // Créer une étiquette pour le cas où l'expression est fausse (et donc la négation vraie)
         String trueLabel = generateNewLabel();
     
@@ -277,7 +294,16 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program exprProgram = visit(ctx.expr());
         program.addInstructions(exprProgram);
         int exprReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de l'expression
-    
+        
+        // Vérifier le type de l'expression
+        Type exprType = getType(new UnknownType(ctx.expr().getText()));
+
+        // Si exprType n'est pas un type entier
+        if (!(exprType.equals(new Primitive_Type(Type.Base.INT)))) { 
+            // Gestion de l'erreur de type
+            throw new RuntimeException("Opération d'opposition non valide sur le type non entier : " + exprType);
+        }
+        
         // Utiliser un nouveau registre pour le résultat de l'opération d'opposition
         int resultReg = getNewRegister();
     
@@ -506,12 +532,31 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
         System.out.println("visitVariable");
         Program program = new Program();
-        //on copie la variable dans un nouveau registre
+    
+        // Récupérer le nom de la variable depuis le contexte
+        String varName = ctx.getText();
+    
+        // Créer un UnknownType basé sur le nom de la variable
+        UnknownType unknownType = new UnknownType(varName);
+    
+        // Obtenir le type réel associé à ce UnknownType, s'il est connu
+        Type realType = getType(unknownType);
+    
+        // Si le type réel n'est pas connu
+        if (realType instanceof UnknownType) {
+            throw new RuntimeException("Type inconnu pour la variable " + varName);
+        }
+    
+        // Récupérer l'adresse de la variable
+        int varAddress = getVariableAddress(varName);
+    
+        // Copier la valeur de la variable dans un nouveau registre
         int newReg = getNewRegister();
-        program.addInstruction(new UALi(UALi.Op.ADD, newReg, getVariableAddress(ctx.getText()), 0));
-
+        program.addInstruction(new UALi(UALi.Op.ADD, newReg, varAddress, 0));
+    
         return program;
     }
+    
 
     /**
      * Visite un nœud de multiplication dans l'arbre syntaxique.
@@ -531,6 +576,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program rightExprProgram = visit(ctx.expr(1));
         int sr2 = registerCounter - 1;
 
+        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
+        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
+
+        // Vérifier si les types sont compatibles pour une opération de multiplication
+        if (!leftType.equals(new Primitive_Type(Type.Base.INT)) || !rightType.equals(new Primitive_Type(Type.Base.INT))) {
+            throw new RuntimeException("Types incompatibles pour la multiplication: " + leftType + " et " + rightType);
+        }
         // Génère le code assembleur pour l'opération de multiplication
         int destRegister = getNewRegister();
         program.addInstructions(leftExprProgram);
@@ -569,6 +621,15 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program rightExprProgram = visit(ctx.expr(1));
         program.addInstructions(rightExprProgram);
         int sr2 = registerCounter - 1;
+
+        // Récupérer les types des expressions
+        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
+        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
+
+        // Vérifier si les types sont compatibles pour une opération d'égalité
+        if (!leftType.equals(rightType)) {
+            throw new RuntimeException("Types incompatibles pour la comparaison: " + leftType + " et " + rightType);
+        }
         
         // Génère le code assembleur pour l'opération d'égalité
         int destRegister = getNewRegister();
@@ -586,7 +647,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
                 program.addInstruction(new CondJump(CondJump.Op.JNEQ, sr1, sr2, trueLabel.getLabel())); 
                 break;
             default:
-                break;
+                throw new RuntimeException("Opérateur d'égalité non reconnu : " + ctx.getChild(1).getText());
         }
 
         //si le rslt est faux, on met 1 dans le registre de destination
@@ -594,6 +655,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         //Enfin, on inverse le résultat, donc 1 si c'est bon, 0 sinon : op : 1 - destRegister[=0 ou 1]
         program.addInstruction(new UAL(trueLabel.getLabel(),UAL.Op.SUB, destRegister, 1, destRegister));
+
         return program;
     }
 
@@ -670,6 +732,16 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program rightExprProgram = visit(ctx.expr(1));
         int sr2 = registerCounter - 1;
         
+        // Vérifier le type des sous-expressions
+        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
+        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
+
+        // Vérifier si les types sont compatibles pour l'addition
+        if (!leftType.equals(rightType)) {
+            // Gestion de l'erreur de type
+            throw new RuntimeException("Type incompatibles pour l'addition: " + leftType + " et " + rightType);
+        }
+
         // Ajoute les instructions générées pour les expressions à additionner
         program.addInstructions(leftExprProgram);
         program.addInstructions(rightExprProgram);
