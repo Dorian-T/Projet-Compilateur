@@ -1,37 +1,43 @@
 package Graph;
 import java.util.*;
 
-public class GrapheDeConflits extends UnorientedGraph<String> {
-    private Map<String, Set<String>> tableauConflits; // Nouveau champ pour enregistrer les conflits
+public class GrapheDeConflits{
+    private UnorientedGraph<Integer> grapheConflit;
+    private HashMap<String, Set<Integer>> lvExitData;
 
-    public GrapheDeConflits(Map<String, Set<String>> LVexit) {
-        tableauConflits = new HashMap<>();
+    public GrapheDeConflits(HashMap<String, Set<Integer>> lvExitData) {
+        this.lvExitData = lvExitData;
+        this.grapheConflit = new UnorientedGraph<Integer>();
+        construireGraphe();
+    }
 
-        Set<String> variables = new HashSet<>();
-        for (Set<String> vars : LVexit.values()) {
-            variables.addAll(vars);
-        }
+    private void construireGraphe() {
+        for (String instr : lvExitData.keySet()) {
+            Set<Integer> variables = lvExitData.get(instr);
 
-        for (String var : variables) {
-            this.addVertex(var);
-            tableauConflits.put(var, new HashSet<>()); // Initialiser l'ensemble de conflits pour chaque variable
-        }
+            // Assure-toi que R0 est inclus si nécessaire
+            variables.add(0); // Ajoute R0
 
-        for (Set<String> vars : LVexit.values()) {
-            for (String var1 : vars) {
-                for (String var2 : vars) {
-                    if (!var1.equals(var2)) {
-                        this.addEdge(var1, var2);
-                        tableauConflits.get(var1).add(var2); // Enregistrer le conflit
+            for (Integer var : variables) {
+                grapheConflit.addVertex(var);
+                for (Integer otherVar : variables) {
+                    if (!var.equals(otherVar) && !grapheConflit.hasEdge(var, otherVar)) {
+                        grapheConflit.addEdge(var, otherVar);
                     }
                 }
             }
         }
     }
 
-    public void afficherTableauConflits() {
-        for (String var : tableauConflits.keySet()) {
-            System.out.println("Variable " + var + " est en conflit avec " + tableauConflits.get(var));
-        }
+    public int colorerGraphe() {
+        return grapheConflit.color();
+    }
+
+    public UnorientedGraph<Integer> getGrapheConflit() {
+        return grapheConflit;
     }
 }
+
+
+
+

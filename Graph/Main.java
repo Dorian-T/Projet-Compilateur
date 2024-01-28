@@ -1,15 +1,16 @@
 package Graph;
-import java.util.List;
+import java.util.*;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) {
 
         //QUESTION1
-        String file = "Graph/code_assembleur.txt";
+        String file = "entrees.txt";
         List<String> instructions = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -36,15 +37,22 @@ public class Main {
             System.out.println();
         }
 
-        System.out.println("\n" + 
-                "\n" + 
-                "----------------------------------------- \n" + 
-                        "\n");
-
         // QUESTION 2
+        System.out.println("\n-----------------------------------------\n");
+
+        // QUESTION 3
+        // Analyse des variables vivantes
         Variables variables = new Variables(graphe, instructions);
         variables.calculateLVEntryExit();
 
+        // Construire un HashMap pour LVExit pour chaque instruction
+        HashMap<String, Set<Integer>> lvExitMap = new HashMap<>();
+        for (String instr : instructions) {
+            Set<Integer> lvExitSet = variables.getLVExit(instr);
+            lvExitMap.put(instr, lvExitSet);
+        }
+
+        // Afficher les résultats de l'analyse des variables vivantes
         for (String instr : instructions) {
             System.out.println("Instruction: " + instr);
             System.out.println("Variables générées: " + variables.getGeneratedVariables(instr));
@@ -53,26 +61,47 @@ public class Main {
             System.out.println("LVExit: " + variables.getLVExit(instr));
             System.out.println();
         }
-        
 
-        System.out.println("\n" + 
-                "\n" + 
-                "----------------------------------------- \n" + 
-                        "\n");
+        System.out.println("\n-----------------------------------------\n");
 
-        // QUESTION 3
-        LV analyse = new LV(graphe);
-        analyse.effectuerAnalyse();
-        GrapheDeConflits grapheDeConflits = new GrapheDeConflits(analyse.getLVexit());
-        grapheDeConflits.afficherTableauConflits();
+        // Construire le Graphe de Conflit
+        GrapheDeConflits grapheDeConflit = new GrapheDeConflits(lvExitMap);
+        UnorientedGraph<Integer> grapheConflit = grapheDeConflit.getGrapheConflit();
 
-        System.out.println("\n" + 
-                "\n" + 
-                "----------------------------------------- \n" + 
-                        "\n");
+        // Afficher le graphe de conflit
+        System.out.println("Graphe de Conflit:\n" + grapheConflit);
 
-        // QUESTION 4
-        int nombreDeCouleurs = grapheDeConflits.color();
-        System.out.println("Nombre de couleurs utilisées : " + nombreDeCouleurs);
+        // Appliquer la coloration du graphe de conflit
+        int nombreDeCouleurs = grapheDeConflit.colorerGraphe();
+        System.out.println("Nombre de couleurs utilisées pour la coloration: " + nombreDeCouleurs);
+        // Obtenir la coloration pour chaque registre
+        HashMap<Integer, Integer> colorationRegistres = new HashMap<>();
+        for (int i = 0; i < nombreDeCouleurs; i++) { // Supposons que les registres sont numérotés de 0 à nombreDeCouleurs-1
+            colorationRegistres.put(i, grapheConflit.getColor(i));
+        }
+
+        // Lire et réécrire le fichier 'exemple.txt'
+        String fichierModifie = "sortie.txt";
+        try (BufferedReader br = new BufferedReader(new FileReader(file));
+             BufferedWriter bw = new BufferedWriter(new FileWriter(fichierModifie))) {
+
+            String ligne;
+            while ((ligne = br.readLine()) != null) {
+                for (Map.Entry<Integer, Integer> entry : colorationRegistres.entrySet()) {
+                    ligne = ligne.replaceAll("R" + entry.getKey(), "R" + entry.getValue());
+                }
+                bw.write(ligne);
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Fichier modifié écrit dans: " + fichierModifie);
     }
 }
+
+
+
+
+

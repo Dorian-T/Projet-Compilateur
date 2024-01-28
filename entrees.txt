@@ -1,0 +1,4 @@
+L1: LD R1 R0
+    ADD R1 R2 R3
+    ADD R2 R1 R3
+    STOP
