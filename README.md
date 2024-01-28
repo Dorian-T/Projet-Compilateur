@@ -33,4 +33,20 @@ La classe `CodeGenerator` étend `AbstractParseTreeVisitor` et implémente `gram
 - LAZRAK Salim
 - MARTIN Albin
 
+### Aperçu
+
+Le but de cette section est de générer, à partir du code assembleur du groupe 2, un code assembleur simplifié ou le nombre de registre est diminué.
+
+### Architecture
+
+'Graph' - 'UnorientedGraph' - 'OrientedGraph'
+
+### Fonctionnalités Principales
+
+- **Graphe de contrôle** : Crée le graphe de contrôle à partir du code assembleur donné par le groupe 2
+- **LVentry et LVexit** : Génère les LVentry et LVexit de chaque instruction du code à partir des variables générées et tuées du code assembleur. 
+- **Graphe de conflit** : Création du graphe de conflit en fonction de nos valeurs de LVexit.
+- **Coloration de graphe** : Coloration du graphe qui nous permet de voir combien de registres sont nécessaires.
+- **Génération nouveau code assembleur** : Reécriture du code assembleur en éliminant les registres inutiles.
+
 ---
