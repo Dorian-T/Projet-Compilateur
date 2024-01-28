@@ -27,4 +27,10 @@ La classe `CodeGenerator` étend `AbstractParseTreeVisitor` et implémente `gram
 
 ## Groupe 3 : Allocation de registres
 
+### Contributeurs
+
+- LARZUL JULIEN
+- LAZRAK Salim
+- MARTIN Albin
+
 ---
