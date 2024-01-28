@@ -199,6 +199,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(rightProgram);
         int rightReg = registerCounter - 1; // Le dernier registre utilisé contient le résultat de la seconde expression
     
+        // Vérifier le type des deux expressions
+        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
+        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
+        if (!leftType.equals(rightType)) {
+            throw new RuntimeException("Types incompatibles pour la comparaison: " + leftType + " et " + rightType);
+        }
+        
         // Utiliser un nouveau registre à 0 pour le résultat de la comparaison
         int resultReg = getNewRegister();
         program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
@@ -250,6 +257,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         Program rightProgram = visit(ctx.expr(1));
         program.addInstructions(rightProgram);
         int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
+
+        // Vérifier le type des deux expressions
+        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
+        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
+        if (!(leftType.equals(new Primitive_Type(Type.Base.BOOL)) && rightType.equals(new Primitive_Type(Type.Base.BOOL)))) {
+            throw new RuntimeException("Opération OR non valide sur des types non booléens: " + leftType + " et " + rightType);
+        }
 
         // Utiliser un nouveau registre pour le résultat de l'opération OR
         int resultReg = getNewRegister();
@@ -504,6 +518,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstructions(rightProgram);
         int rightReg = registerCounter - 1; // Le registre contenant le résultat de la seconde expression
     
+        // Vérifier le type des deux expressions
+        Type leftType = getType(new UnknownType(ctx.expr(0).getText()));
+        Type rightType = getType(new UnknownType(ctx.expr(1).getText()));
+        if (!(leftType.equals(new Primitive_Type(Type.Base.BOOL)) && rightType.equals(new Primitive_Type(Type.Base.BOOL)))) {
+            throw new RuntimeException("Opération OR non valide sur des types non booléens: " + leftType + " et " + rightType);
+        }
+
         // Utiliser un nouveau registre initialisé à 0 pour le résultat de l'opération AND
         int resultReg = getNewRegister();
         program.addInstruction(new UAL(UAL.Op.XOR, resultReg, resultReg, resultReg));
