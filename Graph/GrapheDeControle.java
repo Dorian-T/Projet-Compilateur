@@ -20,13 +20,16 @@ public class GrapheDeControle<T> extends OrientedGraph<T> {
     private boolean estUneEtiquette(String instruction) {
         return instruction.matches(".*:.*");
     }
-
+    private boolean estStop(String instruction) {
+        String[] mots = instruction.trim().split("\\s+");
+        return mots[0].equals("STOP");
+    }
 
     // Vérifie si une instruction est une instruction de saut
     private boolean estUneInstructionDeSaut(String instruction) {
         String[] mots = instruction.trim().split("\\s+");
         String opcode = mots[0];
-        return opcode.equals("JSUP") || opcode.equals("JINF") || opcode.equals("JEQU") || opcode.equals("JMP");
+        return opcode.equals("JSUP") || opcode.equals("JINF") || opcode.equals("JEQU") || opcode.equals("JMP") || opcode.equals("CALL") || opcode.equals("JNEQ") || opcode.equals("JIEQ") || opcode.equals("JSEQ");
     }
 
     private String getCibleDuSaut(String instruction) {
@@ -53,8 +56,8 @@ public class GrapheDeControle<T> extends OrientedGraph<T> {
             String instructionActuelle = instructions.get(i);
             T sommetActuel = (T) instructionActuelle;
 
-            // Ajouter une arête vers l'instruction suivante par défaut
-            if (i < instructions.size() - 1) {
+            // Ajouter une arête vers l'instruction suivante, sauf si c'est 'STOP'
+            if (i < instructions.size() - 1 && !estStop(instructionActuelle)) {
                 T sommetSuivant = (T) instructions.get(i + 1);
                 this.addEdge(sommetActuel, sommetSuivant);
             }
@@ -72,7 +75,3 @@ public class GrapheDeControle<T> extends OrientedGraph<T> {
         }
     }
 }
-
-
-
-
