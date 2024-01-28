@@ -4,9 +4,7 @@ XOR R1 R1 R1
 CALL main
 STOP
 main:
-#BaseType
 ADD R3 R3 R0
-#Integer
 ADDi R4 R0 1
 ADDi R1 R1 1
 ST R4 R1
