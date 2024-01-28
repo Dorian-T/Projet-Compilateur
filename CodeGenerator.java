@@ -153,7 +153,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitNegation(grammarTCLParser.NegationContext ctx) {
-        System.out.println("visitNegation");
+        //System.out.println("visitNegation");
         Program program = new Program();
         
         // Évaluer l'expression à nier
@@ -185,7 +185,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitComparison(grammarTCLParser.ComparisonContext ctx) {
-        System.out.println("visitComparison");
+        //System.out.println("visitComparison");
         Program program = new Program();
         
         // Évaluer la première expression de la comparaison
@@ -237,7 +237,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitOr(grammarTCLParser.OrContext ctx) {
-        System.out.println("visitOr");
+        //System.out.println("visitOr");
         Program program = new Program();
         
         // Évaluer la première expression de l'opération OR
@@ -286,7 +286,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitOpposite(grammarTCLParser.OppositeContext ctx) {
-        System.out.println("visitOpposite");
+        //System.out.println("visitOpposite");
         Program program = new Program();
         
         // Évaluer l'expression dont on doit inverser le signe
@@ -313,12 +313,11 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitInteger(grammarTCLParser.IntegerContext ctx) {
-        System.out.println("visitInteger");
+        //System.out.println("visitInteger");
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
 
-        program.addInstruction(new Com("Integer"));
         program.addInstruction(new UALi(UALi.Op.ADD, newReg, 0, Integer.parseInt(ctx.INT().getText())));
 
         return program;
@@ -333,10 +332,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitTab_access(grammarTCLParser.Tab_accessContext ctx) {
-        System.out.println("visitTab_access");
         Program program = new Program();
         // recuperer registre nom tableau
-        program.addInstruction(new Com("TabAccess"));
         program.addInstructions(visit(ctx.expr(0)));
         int tabAdress = registerCounter - 1;
 
@@ -383,7 +380,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new UAL(dansBonneSection,UAL.Op.ADD, tabAdress, tabAdress, adresseCase));
         //on ajoute ce qui manque pour arriver à la bonne case
 
-        program.addInstruction(new Com("Retour tab access:"));
         //on charge la valeur de la case dans le registre
         int rslt = getNewRegister();
         program.addInstruction(new Mem(Mem.Op.LD, rslt, tabAdress));
@@ -420,13 +416,13 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitCall(grammarTCLParser.CallContext ctx) {
-        System.out.println("visitCall");
+        //System.out.println("visitCall");
         Program program = new Program();
     
 
         for (int i = 0; i < ctx.expr().size(); i++) {
             // Visite chaque argument de la fonction
-            System.out.println("\t" + ctx.expr(i).getText() + " dans " + getVariableAddress(ctx.expr(i).getText()));
+            //System.out.println("\t" + ctx.expr(i).getText() + " dans " + getVariableAddress(ctx.expr(i).getText()));
             Program argProgram = visit(ctx.expr(i));
             program.addInstructions(argProgram);
             //on les empiles, après avoir augmenté le stack pointer
@@ -457,7 +453,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitBoolean(grammarTCLParser.BooleanContext ctx) {
-        System.out.println("visitBoolean");
+        //System.out.println("visitBoolean");
         //on utilise les camps supp de Program pour stocker le type et la valeur
         Program program = new Program();
         int newReg = getNewRegister();
@@ -479,7 +475,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitAnd(grammarTCLParser.AndContext ctx) {
-        System.out.println("visitAnd");
+        //System.out.println("visitAnd");
         Program program = new Program();
         
         // Évaluer la première expression de l'opération AND
@@ -518,7 +514,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitVariable(grammarTCLParser.VariableContext ctx) {
-        System.out.println("visitVariable");
+        //System.out.println("visitVariable");
         Program program = new Program();
     
         // Récupérer le nom de la variable depuis le contexte
@@ -543,7 +539,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitMultiplication(grammarTCLParser.MultiplicationContext ctx) {
-        System.out.println("visitMultiplication");
+        //System.out.println("visitMultiplication");
         Program program = new Program();
 
         // Récupère le code généré pour les deux expressions à multiplier
@@ -579,7 +575,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitEquality(grammarTCLParser.EqualityContext ctx) {
-        System.out.println("visitEquality");
+        //System.out.println("visitEquality");
         Program program = new Program();
 
         // Récupère le code généré pour les deux expressions à comparer
@@ -629,10 +625,8 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitTab_initialization(grammarTCLParser.Tab_initializationContext ctx) {
-        System.out.println("visitTab_initialization");
 
         Program program = new Program();
-        program.addInstruction(new Com("TabInitialization"));
 
         int tabAdress = registerCounter - 1;
 
@@ -669,8 +663,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new UAL(UAL.Op.ADD, registerCounter - 1, 0, tabAdress));
         //normalement ça casse rien
 
-
-        program.addInstruction(new Com("End Tab Init"));
         return program;
     }
     
@@ -683,7 +675,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitAddition(grammarTCLParser.AdditionContext ctx) {
-        System.out.println("visitAddition");
+        //System.out.println("visitAddition");
         Program program = new Program();
 
         // Récupère le code généré pour les deux expressions à additionner
@@ -722,11 +714,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitBase_type(grammarTCLParser.Base_typeContext ctx) {
-        System.out.println("visitBase_type");
         Program program = new Program();
 
         // Génère le code pour la déclaration du type de base
-        program.addInstruction(new Com("BaseType"));
 
         //c'est soit un int soit un bool, ou un auto...
 
@@ -742,12 +732,11 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitTab_type(grammarTCLParser.Tab_typeContext ctx) {
-        System.out.println("visitTab_type");
+
 
         Program program = new Program();
-        program.addInstruction(new Com("TabType"));
-        program.addInstructions(visit(ctx.type()));
-        
+
+
         //on assigne des cases mémoires pour le tableau
         int newReg = getNewRegister();
         //incrémentation du stack pointer
@@ -762,9 +751,25 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         //on initialise l'adresse de la prochaine partie du tableau à 0
         program.addInstruction(new Mem(Mem.Op.ST, 0, 2));
 
+
+
+
+        if (ctx.type() instanceof grammarTCLParser.Tab_typeContext) {
+
+            //on gère les tableaux de tableaux (visit le type) et retourne l'adresse du tableau
+            program.addInstructions(visit(ctx.type()));
+            //on pass la taille du tableau à 1
+            program.addInstruction(new Mem(Mem.Op.ST, 1, newReg));
+            //on met l'adresse du tableau2 dans la mémoire
+            program.addInstruction(new UALi(UALi.Op.ADD, newReg,newReg, 1));
+            program.addInstruction(new Mem(Mem.Op.ST, registerCounter, newReg));
+            program.addInstruction(new UALi(UALi.Op.SUB, newReg, newReg, 1));
+        }
+
         //on met l'adresse du tableau dans le registre
         int tabAdress = getNewRegister();
         program.addInstruction(new UAL(UAL.Op.ADD, tabAdress, newReg, 0));
+
         
         return program;
     }
@@ -778,7 +783,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitDeclaration(grammarTCLParser.DeclarationContext ctx) {
-        System.out.println("visitDeclaration");
+        //System.out.println("visitDeclaration");
         Program program = new Program();
         /* !!!prob : on ne peut avoir qu'une déclaration d'entier (ou de booléen des fois)
         */
@@ -819,7 +824,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitPrint(grammarTCLParser.PrintContext ctx) {
-        System.out.println("visitPrint");
+        //System.out.println("visitPrint");
         Program program = new Program();
         
         // Récupérer le nom de la variable à imprimer
@@ -844,9 +849,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitAssignment(grammarTCLParser.AssignmentContext ctx) {
-        System.out.println("visitAssignment");
+
         Program program = new Program();
-        program.addInstruction(new Com("Assignment"));
+
 
         // trouve la valeur à assigner en visitan expression dans TYPE[trucs] = expression 
         Program expressionProgram = visit(ctx.expr(ctx.expr().size() - 1));
@@ -861,7 +866,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         if (getType(ctx.VAR().getText()) instanceof Primitive_Type) {
             //on assigne la valeur de l'expression à la variable
             program.addInstruction(new UAL(UAL.Op.ADD, regVarAssignee, source, 0));
-            program.addInstruction(new Com("End Assignment"));
+
             return program;
         }
         //cas tableau --------------------------------------------------------------------------------------
@@ -944,7 +949,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
                 program.addInstruction(new Label(tailleTabPasOK));
             
                 //on augmente la taille du tableau
-                program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1)); //ahut pile
+                program.addInstruction(new UALi(UALi.Op.ADD, 2,2,1)); //aut pile
                 program.addInstruction(new UALi(UALi.Op.ADD, tabIterator, tabIterator, 8));//on passe à la case suivante
                 program.addInstruction(new Mem(Mem.Op.ST, 2, tabIterator));  //enregistre l'adresse de la prochaine partie du tableau
                 //on itère sur le tableau
@@ -968,9 +973,6 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         //on assigne la valeur de l'expression à la case du tableau
         program.addInstruction(new Mem(Mem.Op.ST, source, tabIterator));
-        
-
-        program.addInstruction(new Com("End Assignment"));
         return program;
     }
 
@@ -983,7 +985,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitBlock(grammarTCLParser.BlockContext ctx) {
-        System.out.println("visitBlock");
+        //System.out.println("visitBlock");
         Program program = new Program();
 
         // Itérer sur chaque instruction dans le bloc
@@ -1006,7 +1008,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitIf(grammarTCLParser.IfContext ctx) {
-        System.out.println("visitIf");
+        //System.out.println("visitIf");
         Program program = new Program();
 
         // Génère le code pour l'expression conditionnelle
@@ -1030,7 +1032,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
 
         // Si un bloc else existe, génère le code pour le bloc else
         if (ctx.instr().size() > 1) {
-            System.out.println("\twith else");
+            //System.out.println("\twith else");
 
             //cas true, on sort du if
             String Label2 = generateNewLabel("EndIf_");
@@ -1061,7 +1063,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitWhile(grammarTCLParser.WhileContext ctx) {
-        System.out.println("visitWhile");
+        //System.out.println("visitWhile");
         Program program = new Program();
 
         // Création de l'étiquette pour le début de la boucle while
@@ -1100,7 +1102,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitFor(grammarTCLParser.ForContext ctx) {
-        System.out.println("visitFor");
+        //System.out.println("visitFor");
 
         Program program = new Program();
 
@@ -1153,7 +1155,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
      */
     @Override
     public Program visitReturn(grammarTCLParser.ReturnContext ctx) {
-        System.out.println("visitReturn");
+        //System.out.println("visitReturn");
 
         // Créer un programme pour la valeur de retour
         Program returnProgram = visit(ctx.expr());
@@ -1177,7 +1179,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitCore_fct(grammarTCLParser.Core_fctContext ctx) {
         Program program = new Program();
-        System.out.println("visitCore_fct");
+        //System.out.println("visitCore_fct");
         int i=0;
         String str = "";
         // Générer le code pour chaque instruction dans la fonction de base
@@ -1213,9 +1215,9 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     public Program visitDecl_fct(grammarTCLParser.Decl_fctContext ctx) {
         Program program = new Program();
         //on affiche toutes les déclarations de fonctions
-        System.out.println("visitDecl_fct");
+        //System.out.println("visitDecl_fct");
 
-        System.out.println("\t" + ctx.VAR(0).getText() + " : " + ctx.core_fct().getText());
+        //System.out.println("\t" + ctx.VAR(0).getText() + " : " + ctx.core_fct().getText());
 
 
         // On fait son étiquette
@@ -1223,7 +1225,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
         program.addInstruction(new Label(functionName));
 
         for (int i =  ctx.VAR().size() -1; i > 0 ; i--) {
-            System.out.println("arg : " + ctx.VAR(i).getText());
+            //System.out.println("arg : " + ctx.VAR(i).getText());
 
             //on ajoute les arguments dans la table des variables
             int newReg = getNewRegister();
@@ -1255,7 +1257,7 @@ public class CodeGenerator  extends AbstractParseTreeVisitor<Program> implements
     @Override
     public Program visitMain(grammarTCLParser.MainContext ctx) {
         Program program = new Program();
-        System.out.println("visitMain");
+        //System.out.println("visitMain");
         program.addInstruction(new UAL(UAL.Op.XOR, 0, 0, 0));
         program.addInstruction(new UALi(UALi.Op.ADD, 1, 0, 1));
         program.addInstruction(new UAL(UAL.Op.XOR, 2, 2, 2));
