@@ -3,75 +3,70 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
-public class GrapheDeControle<T> extends OrientedGraph<T> {
+public class GrapheDeControle extends OrientedGraph<Integer> {
+    // Cette carte stocke les étiquettes et leur indice associé dans la liste des instructions.
+    private Map<String, Integer> etiquettes = new HashMap<>();
 
     public GrapheDeControle() {
         super();
     }
 
-    // création des sommets avec les labels
-    public void ajouterSommets(List<T> instructions) {
-        for (T instruction : instructions) {
-            this.addVertex(instruction);
+    public void ajouterSommets(List<String> instructions) {
+        for (int i = 0; i < instructions.size(); i++) {
+            addVertex(i); // Chaque instruction est représentée par son indice.
         }
     }
 
-    // Vérifie si une instruction est une étiquette
-    private boolean estUneEtiquette(String instruction) {
-        return instruction.matches(".*:.*");
-    }
-    private boolean estStop(String instruction) {
-        String[] mots = instruction.trim().split("\\s+");
-        return mots[0].equals("STOP");
-    }
-
-    // Vérifie si une instruction est une instruction de saut
-    private boolean estUneInstructionDeSaut(String instruction) {
-        String[] mots = instruction.trim().split("\\s+");
-        String opcode = mots[0];
-        return opcode.equals("JSUP") || opcode.equals("JINF") || opcode.equals("JEQU") || opcode.equals("JMP") || opcode.equals("CALL") || opcode.equals("JNEQ") || opcode.equals("JIEQ") || opcode.equals("JSEQ");
-    }
-
-    private String getCibleDuSaut(String instruction) {
-        String[] mots = instruction.trim().split("\\s+");
-        return mots[mots.length - 1]; // La cible est le dernier mot de l'instruction
-    }
-
     public void ajouteAretes(List<String> instructions) {
-        Map<String, Integer> etiquettes = new HashMap<>();
-
-        // Identifier les étiquettes et leurs positions
+        // Premièrement, identifier toutes les étiquettes et leur position.
         for (int i = 0; i < instructions.size(); i++) {
-            String instruction = instructions.get(i);
-            if (estUneEtiquette(instruction)) {
-                // Le nom de l'étiquette est extrait de l'instruction
-                String nomEtiquette = instruction.substring(0, instruction.indexOf(":")).trim();
-                // L'étiquette pointe directement vers l'instruction associée
+            if (estUneEtiquette(instructions.get(i))) {
+                String nomEtiquette = getNomEtiquette(instructions.get(i));
+                // Associer l'étiquette avec l'indice de l'instruction suivante dans la liste.
                 etiquettes.put(nomEtiquette, i);
             }
         }
 
-        // Analyser et ajouter des arêtes pour les instructions de saut
+        // Deuxièmement, ajouter des arêtes pour les instructions normales et de saut.
         for (int i = 0; i < instructions.size(); i++) {
-            String instructionActuelle = instructions.get(i);
-            T sommetActuel = (T) instructionActuelle;
-
-            // Ajouter une arête vers l'instruction suivante, sauf si c'est 'STOP'
-            if (i < instructions.size() - 1 && !estStop(instructionActuelle)) {
-                T sommetSuivant = (T) instructions.get(i + 1);
-                this.addEdge(sommetActuel, sommetSuivant);
-            }
-
-            // Ajouter des arêtes pour les instructions de saut
-            if (estUneInstructionDeSaut(instructionActuelle)) {
-                String cible = getCibleDuSaut(instructionActuelle).trim();
-                if (etiquettes.containsKey(cible)) {
-                    // La cible du saut pointe vers l'instruction associée à l'étiquette
-                    int positionCible = etiquettes.get(cible);
-                    T sommetCible = (T) instructions.get(positionCible);
-                    this.addEdge(sommetActuel, sommetCible);
+            if (!estStop(instructions.get(i))) {
+                if (i < instructions.size() - 1 && !estUneEtiquette(instructions.get(i + 1))) {
+                    this.addEdge(i, i + 1);
+                }
+                if (estUneInstructionDeSaut(instructions.get(i))) {
+                    String cible = getCibleDuSaut(instructions.get(i));
+                    if (etiquettes.containsKey(cible)) {
+                        this.addEdge(i, etiquettes.get(cible));
+                    }
                 }
             }
         }
+    }
+
+    private boolean estUneEtiquette(String instruction) {
+        // Vérifier si l'instruction contient une étiquette.
+        return instruction.contains(":");
+    }
+
+    private String getNomEtiquette(String instruction) {
+        // Obtenir le nom de l'étiquette à partir de l'instruction.
+        int colonIndex = instruction.indexOf(':');
+        if (colonIndex != -1) {
+            return instruction.substring(0, colonIndex).trim();
+        }
+        return instruction; // Retourne toute l'instruction si aucune étiquette n'est trouvée.
+    }
+
+    private boolean estStop(String instruction) {
+        return instruction.startsWith("STOP");
+    }
+
+    private boolean estUneInstructionDeSaut(String instruction) {
+        return instruction.matches(".*(JSUP|JINF|JEQU|JMP|CALL|JNEQ|JIEQ|JSEQ).*");
+    }
+
+    private String getCibleDuSaut(String instruction) {
+        String[] mots = instruction.split("\\s+");
+        return mots[mots.length - 1];
     }
 }

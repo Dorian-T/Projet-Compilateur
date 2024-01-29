@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public abstract class Graph<T> {
-    protected ArrayList<T> vertices;
+    public ArrayList<T> vertices;
     protected HashMap<T,ArrayList<T>> adjList;
    
     /**

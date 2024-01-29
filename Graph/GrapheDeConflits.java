@@ -1,25 +1,27 @@
 package Graph;
 import java.util.*;
 
-public class GrapheDeConflits{
+public class GrapheDeConflits {
     private UnorientedGraph<Integer> grapheConflit;
     private HashMap<String, Set<Integer>> lvExitData;
+    private Set<Integer> tousLesRegistres;
 
-    public GrapheDeConflits(HashMap<String, Set<Integer>> lvExitData) {
+    public GrapheDeConflits(HashMap<String, Set<Integer>> lvExitData, Set<Integer> tousLesRegistres) {
         this.lvExitData = lvExitData;
-        this.grapheConflit = new UnorientedGraph<Integer>();
+        this.tousLesRegistres = tousLesRegistres;
+        this.grapheConflit = new UnorientedGraph();
         construireGraphe();
     }
 
     private void construireGraphe() {
-        for (String instr : lvExitData.keySet()) {
-            Set<Integer> variables = lvExitData.get(instr);
+        // Ajouter tous les registres comme nœuds
+        for (Integer reg : tousLesRegistres) {
+            grapheConflit.addVertex(reg);
+        }
 
-            // Assure-toi que R0 est inclus si nécessaire
-            variables.add(0); // Ajoute R0
-
+        // Ajouter des arêtes pour les registres en conflit
+        for (Set<Integer> variables : lvExitData.values()) {
             for (Integer var : variables) {
-                grapheConflit.addVertex(var);
                 for (Integer otherVar : variables) {
                     if (!var.equals(otherVar) && !grapheConflit.hasEdge(var, otherVar)) {
                         grapheConflit.addEdge(var, otherVar);
@@ -37,7 +39,3 @@ public class GrapheDeConflits{
         return grapheConflit;
     }
 }
-
-
-
-

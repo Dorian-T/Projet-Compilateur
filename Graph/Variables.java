@@ -2,14 +2,14 @@ package Graph;
 import java.util.*;
 
 public class Variables {
-    private GrapheDeControle<String> graphe;
+    private GrapheDeControle graphe;
     private List<String> instructions;
-    private HashMap<String, Set<Integer>> generatedVariables;
-    private HashMap<String, Set<Integer>> killedVariables;
-    private HashMap<String, Set<Integer>> lvEntry;
-    private HashMap<String, Set<Integer>> lvExit;
+    private HashMap<Integer, Set<Integer>> generatedVariables;
+    private HashMap<Integer, Set<Integer>> killedVariables;
+    private HashMap<Integer, Set<Integer>> lvEntry;
+    private HashMap<Integer, Set<Integer>> lvExit;
 
-    public Variables(GrapheDeControle<String> graphe, List<String> instructions) {
+    public Variables(GrapheDeControle graphe, List<String> instructions) {
         this.graphe = graphe;
         this.instructions = instructions;
         this.generatedVariables = new HashMap<>();
@@ -21,43 +21,41 @@ public class Variables {
     }
 
     private void calculateVariables() {
-        for (String instr : instructions) {
-            if (instr.trim().startsWith("#")) continue;
+        for (int i = 0; i < instructions.size(); i++) {
+            String instr = instructions.get(i);
             Set<Integer> genVars = new HashSet<>();
             Set<Integer> killVars = new HashSet<>();
+            // Afficher l'instruction pour le débogage
             String[] parts = instr.split("\\s+");
-            if (parts.length < 2) continue;
-    
-            int startIndex = parts[0].endsWith(":") ? 1 : 0;
+            if (parts.length < 2) continue; // Skip labels and empty lines
+
+            int startIndex = parts[0].endsWith(":") ? 1 : 0; // Skip label if present
             String opcode = parts[startIndex];
-    
+
             switch (opcode) {
                 case "LD":
-                    genVars.add(extractRegister(parts[startIndex + 1])); 
-                    killVars.add(extractRegister(parts[startIndex + 2])); 
+                    // Format: LD Rdest Rsrc
+                    genVars.add(extractRegister(parts[startIndex + 2])); // Ajout du registre source
+                    killVars.add(extractRegister(parts[startIndex + 1])); // Ajout du registre destination
                     break;
-                case "ST":
-                    killVars.add(extractRegister(parts[startIndex + 1])); 
-                    genVars.add(extractRegister(parts[startIndex + 2])); 
-                    break;
+                case "XOR":
                 case "ADD":
                 case "SUB":
                 case "MUL":
                 case "DIV":
                 case "MOD":
-                case "XOR":
                 case "AND":
                 case "OR":
                 case "SL":
                 case "SR":
-                    killVars.add(extractRegister(parts[startIndex + 1])); 
-                    genVars.add(extractRegister(parts[startIndex + 2])); 
-                    genVars.add(extractRegister(parts[startIndex + 3])); 
+                    killVars.add(extractRegister(parts[startIndex + 1]));
+                    genVars.add(extractRegister(parts[startIndex + 2]));
+                    genVars.add(extractRegister(parts[startIndex + 3]));
                     break;
                 case "ADDi":
                 case "SUBi":
                     killVars.add(extractRegister(parts[startIndex + 1]));
-                    genVars.add(extractRegister(parts[startIndex + 2])); 
+                    genVars.add(extractRegister(parts[startIndex + 2]));
                     break;
                 case "JMP":
                 case "CALL":
@@ -68,76 +66,77 @@ public class Variables {
                 case "JNEQ":
                 case "JIEQ":
                 case "JSEQ":
-                    genVars.add(extractRegister(parts[startIndex + 1])); 
-                    genVars.add(extractRegister(parts[startIndex + 2])); 
+                    genVars.add(extractRegister(parts[startIndex + 1]));
+                    genVars.add(extractRegister(parts[startIndex + 2]));
+                    break;
+                case "ST":
+                    killVars.add(extractRegister(parts[startIndex + 1])); // tue address
+                    genVars.add(extractRegister(parts[startIndex + 2])); // génère src
                     break;
                 case "RET":
                     break;
                 default:
                     break;
             }
-    
-            generatedVariables.put(instr, genVars);
-            killedVariables.put(instr, killVars);
+            generatedVariables.put(i, genVars);
+            killedVariables.put(i, killVars);
         }
     }
 
     public void calculateLVEntryExit() {
-        // Initialisation de LVExit avec les variables générées
-        for (String instr : instructions) {
-            Set<Integer> initialLVExit = new HashSet<>(generatedVariables.getOrDefault(instr, new HashSet<>()));
-            lvExit.put(instr, initialLVExit);
-        }
-
         boolean changed;
         do {
             changed = false;
-            for (String instr : instructions) {
-                if (instr.trim().startsWith("#")) continue;
-                Set<Integer> newLVEntry = new HashSet<>(lvExit.getOrDefault(instr, new HashSet<>()));
-                newLVEntry.removeAll(killedVariables.getOrDefault(instr, new HashSet<>()));
-                newLVEntry.addAll(generatedVariables.getOrDefault(instr, new HashSet<>()));
-
-                if (!newLVEntry.equals(lvEntry.get(instr))) {
-                    lvEntry.put(instr, newLVEntry);
+            for (int index = instructions.size() - 1; index >= 0; index--) {
+                Set<Integer> currentLVExit = new HashSet<>();
+                List<Integer> outNeighbors = graphe.getOutNeighbors(index);
+    
+                if (outNeighbors != null) {
+                    for (int neighborIndex : outNeighbors) {
+                        currentLVExit.addAll(lvEntry.getOrDefault(neighborIndex, new HashSet<>()));
+                    }
+                }
+    
+                Set<Integer> currentLVEntry = new HashSet<>(currentLVExit);
+                currentLVEntry.removeAll(killedVariables.getOrDefault(index, new HashSet<>()));
+                currentLVEntry.addAll(generatedVariables.getOrDefault(index, new HashSet<>()));
+    
+                if (!currentLVExit.equals(lvExit.get(index))) {
+                    lvExit.put(index, currentLVExit);
                     changed = true;
                 }
-
-                Set<Integer> newLVExit = new HashSet<>();
-                for (String succ : graphe.getOutNeighbors(instr)) {
-                    newLVExit.addAll(lvEntry.getOrDefault(succ, new HashSet<>()));
-                }
-
-                if (!newLVExit.equals(lvExit.get(instr))) {
-                    lvExit.put(instr, newLVExit);
+    
+                if (!currentLVEntry.equals(lvEntry.get(index))) {
+                    lvEntry.put(index, currentLVEntry);
                     changed = true;
                 }
             }
         } while (changed);
     }
+    
 
     private int extractRegister(String reg) {
         if (reg.matches("R\\d+")) {
             return Integer.parseInt(reg.substring(1));
         } else {
-            return -1; 
+            return -1; // Return -1 if it's not a register
         }
     }
 
-    public Set<Integer> getGeneratedVariables(String instr) {
-        return generatedVariables.getOrDefault(instr, new HashSet<>());
+    public Set<Integer> getGeneratedVariables(int index) {
+        return generatedVariables.getOrDefault(index, new HashSet<>());
     }
 
-    public Set<Integer> getKilledVariables(String instr) {
-        return killedVariables.getOrDefault(instr, new HashSet<>());
+    public Set<Integer> getKilledVariables(int index) {
+        return killedVariables.getOrDefault(index, new HashSet<>());
     }
 
-    public Set<Integer> getLVEntry(String instr) {
-        return lvEntry.getOrDefault(instr, new HashSet<>());
+    public Set<Integer> getLVEntry(int index) {
+        return lvEntry.getOrDefault(index, new HashSet<>());
     }
 
-    public Set<Integer> getLVExit(String instr) {
-        return lvExit.getOrDefault(instr, new HashSet<>());
+    public Set<Integer> getLVExit(int index) {
+        return lvExit.getOrDefault(index, new HashSet<>());
     }
     public boolean isUsedOrDefinedElsewhere(Integer reg, String excludingInstr) {
         for (String instr : instructions) {
@@ -146,10 +145,10 @@ public class Variables {
                 Set<Integer> killVars = killedVariables.getOrDefault(instr, new HashSet<>());
 
                 if (genVars.contains(reg) || killVars.contains(reg)) {
-                    return true; 
+                    return true; // Le registre est utilisé ou défini dans une autre instruction
                 }
             }
         }
-        return false;
+        return false; // Le registre n'est pas utilisé ou défini ailleurs
     }
 }

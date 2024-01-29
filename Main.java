@@ -58,23 +58,26 @@ public class Main {
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String ligne;
-            String labelEnCours = "";
+            String labelEnCours = ""; // Utilisé pour stocker un label jusqu'à la prochaine instruction
 
             while ((ligne = br.readLine()) != null) {
                 ligne = ligne.trim();
 
+                // Ignorer les commentaires
                 if (ligne.startsWith("#")) {
                     continue;
                 }
 
+                // Vérifier si la ligne est un label
                 if (ligne.endsWith(":")) {
-                    labelEnCours = ligne;
+                    labelEnCours = ligne; // Stocker le label
                     continue;
                 }
 
+                // Concaténer le label (s'il existe) avec l'instruction actuelle
                 if (!labelEnCours.isEmpty()) {
                     ligne = labelEnCours + " " + ligne;
-                    labelEnCours = "";
+                    labelEnCours = ""; // Réinitialiser le label en cours
                 }
 
                 instructions.add(ligne);
@@ -84,17 +87,18 @@ public class Main {
         }
 
         System.out.println(instructions);
-        GrapheDeControle<String> graphe = new GrapheDeControle();
+        GrapheDeControle graphe = new GrapheDeControle();
         graphe.ajouterSommets(instructions);
         graphe.ajouteAretes(instructions);
 
         System.out.println();
-        for (String instruction : instructions) {
-            ArrayList<String> outNeighbors = graphe.getOutNeighbors(instruction);
-            ArrayList<String> inNeighbors = graphe.getInNeighbors(instruction);
-            System.out.println(instruction);
-            System.out.println("Voisins sortants: " + outNeighbors);
-            System.out.println("Voisins entrants: " + inNeighbors);
+        for (int i = 0; i < instructions.size(); i++) {
+            List<Integer> outNeighbors = graphe.getOutNeighbors(i);
+            List<Integer> inNeighbors = graphe.getInNeighbors(i);
+
+            System.out.println("Instruction " + i + " : " + instructions.get(i));
+            System.out.println("Voisins sortants: " + convertIndicesToInstructions(outNeighbors, instructions));
+            System.out.println("Voisins entrants: " + convertIndicesToInstructions(inNeighbors, instructions));
             System.out.println();
         }
 
@@ -106,26 +110,46 @@ public class Main {
         Variables variables = new Variables(graphe, instructions);
         variables.calculateLVEntryExit();
 
-        HashMap<String, Set<Integer>> lvExitMap = new HashMap<>();
-        for (String instr : instructions) {
-            Set<Integer> lvExitSet = variables.getLVExit(instr);
-            lvExitMap.put(instr, lvExitSet);
+        // Construire un HashMap pour LVExit pour chaque instruction
+        // Construire un HashMap pour LVExit pour chaque instruction
+        HashMap<Integer, Set<Integer>> lvExitMap = new HashMap<>();
+        for (int i = 0; i < instructions.size(); i++) {
+            Set<Integer> lvExitSet = variables.getLVExit(i);
+            lvExitMap.put(i, lvExitSet);
         }
 
         // Afficher les résultats de l'analyse des variables vivantes
-        for (String instr : instructions) {
+        for (int i = 0; i < instructions.size(); i++) {
+            String instr = instructions.get(i);
             System.out.println("Instruction: " + instr);
-            System.out.println("Variables générées: " + variables.getGeneratedVariables(instr));
-            System.out.println("Variables tuées: " + variables.getKilledVariables(instr));
-            System.out.println("LVEntry: " + variables.getLVEntry(instr));
-            System.out.println("LVExit: " + variables.getLVExit(instr));
+            System.out.println("Variables générées: " + variables.getGeneratedVariables(i));
+            System.out.println("Variables tuées: " + variables.getKilledVariables(i));
+            System.out.println("LVEntry: " + variables.getLVEntry(i));
+            System.out.println("LVExit: " + variables.getLVExit(i));
             System.out.println();
         }
 
         System.out.println("\n-----------------------------------------\n");
 
         // Construire le Graphe de Conflit
-        GrapheDeConflits grapheDeConflit = new GrapheDeConflits(lvExitMap);
+        HashMap<String, Set<Integer>> lvExitMapForConflits = new HashMap<>();
+        for (int i = 0; i < instructions.size(); i++) {
+            lvExitMapForConflits.put(instructions.get(i), lvExitMap.get(i));
+        }
+        Set<Integer> tousLesRegistres = new HashSet<>();
+        for (String instr : instructions) {
+            // Extrait les registres de chaque instruction et les ajoute à l'ensemble
+            String[] parts = instr.split("\\s+");
+            for (String part : parts) {
+                if (part.matches("R\\d+")) {
+                    tousLesRegistres.add(Integer.parseInt(part.substring(1)));
+                }
+            }
+        }
+
+        // Construire le Graphe de Conflit avec tous les registres
+        GrapheDeConflits grapheDeConflit = new GrapheDeConflits(lvExitMapForConflits, tousLesRegistres);
+
         UnorientedGraph<Integer> grapheConflit = grapheDeConflit.getGrapheConflit();
 
         // Afficher le graphe de conflit
@@ -135,9 +159,12 @@ public class Main {
         int nombreDeCouleurs = grapheDeConflit.colorerGraphe();
         System.out.println("Nombre de couleurs utilisées pour la coloration: " + nombreDeCouleurs);
         // Obtenir la coloration pour chaque registre
+
         HashMap<Integer, Integer> colorationRegistres = new HashMap<>();
-        for (int i = 0; i < nombreDeCouleurs; i++) {
-            colorationRegistres.put(i, grapheConflit.getColor(i));
+        for (int reg : grapheConflit.vertices) {
+            int color = grapheConflit.getColor(reg);
+            colorationRegistres.put(reg, color); // Associer chaque registre à sa couleur
+            System.out.println("Registre: R" + reg + ", Couleur: " + color);
         }
 
         String fichierModifie = "sortie.txt";
@@ -147,9 +174,9 @@ public class Main {
             String ligne;
             while ((ligne = br.readLine()) != null) {
                 for (Map.Entry<Integer, Integer> entry : colorationRegistres.entrySet()) {
-                    if (entry.getValue() >= 0) {
-                        ligne = ligne.replaceAll("R" + entry.getKey(), "R" + entry.getValue());
-                    }
+                    // Utiliser une expression régulière pour matcher les registres en tant que mots
+                    // complets
+                    ligne = ligne.replaceAll("\\bR" + entry.getKey() + "\\b", "R" + entry.getValue());
                 }
                 bw.write(ligne);
                 bw.newLine();
@@ -159,6 +186,17 @@ public class Main {
         }
 
         System.out.println("Fichier modifié écrit dans: " + fichierModifie);
+
+    }
+
+    private static List<String> convertIndicesToInstructions(List<Integer> indices, List<String> instructions) {
+        List<String> neighborInstructions = new ArrayList<>();
+        if (indices != null) {
+            for (Integer index : indices) {
+                neighborInstructions.add(instructions.get(index));
+            }
+        }
+        return neighborInstructions;
     }
 
     public static void toFile(Program program) {
